@@ -57,15 +57,7 @@ export function SettingsCloudSyncSection() {
   };
 
   if (!configured) {
-    return (
-      <SettingsPanel title="Cloud sync" description="Optional · Supabase" icon={Cloud}>
-        <p className="font-mono text-[11px] text-text-muted">
-          Supabase is not configured. Set <code className="text-text-secondary">VITE_SUPABASE_URL</code>{" "}
-          and <code className="text-text-secondary">VITE_SUPABASE_ANON_KEY</code> to enable optional sync.
-          ModelWise works fully in local mode without these variables.
-        </p>
-      </SettingsPanel>
-    );
+    return null;
   }
 
   return (

@@ -6,6 +6,7 @@ import { SettingsStorageSection, SettingsSecuritySection } from "./SettingsStora
 import { SettingsCloudSyncSection } from "./SettingsCloudSyncSection";
 import { CostEstimator } from "@/components/CostEstimator";
 import { SessionExportImport } from "@/components/SessionExportImport";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import type { SettingsHandlersProps } from "./settings-props";
 import type { ProviderId } from "@/config/providers";
 
@@ -54,7 +55,7 @@ export function SettingsView(props: SettingsHandlersProps) {
 
       {activeSection === "storage" && <SettingsStorageSection {...props} />}
 
-      {activeSection === "cloud" && <SettingsCloudSyncSection />}
+      {activeSection === "cloud" && isSupabaseConfigured() && <SettingsCloudSyncSection />}
 
       {activeSection === "sessions" && (
         <div className="border border-stroke-subtle [&_.rounded-lg]:rounded-none [&_.shadow]:shadow-none">

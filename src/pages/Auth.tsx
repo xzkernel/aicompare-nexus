@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Github, Cloud, ArrowRight, HardDrive, Wifi, Lock } from "lucide-react";
+import { Github, ArrowRight, HardDrive, Wifi, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -203,29 +203,7 @@ export default function Auth() {
                 Provider API keys are never synced.
               </p>
             </>
-          ) : (
-            <div className="border border-white/[0.05] bg-white/[0.02] px-4 py-4">
-              <p className="font-mono text-[10px] leading-relaxed text-white/30">
-                Cloud sync is not configured.
-                Set{" "}
-                <code className="text-white/50">VITE_SUPABASE_URL</code>
-                {" and "}
-                <code className="text-white/50">VITE_SUPABASE_ANON_KEY</code>
-                {" "}to enable optional identity.
-              </p>
-              <p className="mt-2 font-mono text-[10px] text-white/20">
-                See{" "}
-                <a
-                  href="https://github.com/Archiixyz/aicompare-nexus/blob/main/SUPABASE_SETUP.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-white/40"
-                >
-                  SUPABASE_SETUP.md
-                </a>
-              </p>
-            </div>
-          )}
+          ) : null}
 
           {/* Bottom coordinates */}
           <div className="mt-auto pt-16">

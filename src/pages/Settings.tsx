@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useSecureApiKeys } from "@/lib/secure-api-keys";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { SettingsView } from "@/components/settings/SettingsView";
 import type { SettingsSectionId } from "@/components/settings/SettingsLayout";
 
@@ -57,8 +58,14 @@ export default function Settings() {
 
   useEffect(() => {
     const section = searchParams.get("section");
-    if (section === "cloud") setActiveSection("cloud");
+    if (section === "cloud" && isSupabaseConfigured()) setActiveSection("cloud");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (activeSection === "cloud" && !isSupabaseConfigured()) {
+      setActiveSection("api-keys");
+    }
+  }, [activeSection]);
 
   // Handle API key input change
   const handleKeyChange = (keyName: string, value: string) => {

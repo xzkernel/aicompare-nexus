@@ -33,16 +33,7 @@ export function AccountMenu({ className }: { className?: string }) {
   const { status, isCloudActive } = useCloudSync();
 
   if (!configured) {
-    return (
-      <span
-        className={cn(
-          "hidden font-mono text-[10px] uppercase tracking-wider text-white/40 lg:inline",
-          className
-        )}
-      >
-        {t("auth.localMode")}
-      </span>
-    );
+    return null;
   }
 
   if (loading) {

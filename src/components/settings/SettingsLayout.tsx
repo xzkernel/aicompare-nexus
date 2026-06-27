@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 export type SettingsSectionId =
   | "profiles"
@@ -22,6 +23,11 @@ export const SETTINGS_SECTION_IDS: SettingsSectionId[] = [
   "cost",
   "security",
 ];
+
+function visibleSettingsSectionIds(): SettingsSectionId[] {
+  if (isSupabaseConfigured()) return SETTINGS_SECTION_IDS;
+  return SETTINGS_SECTION_IDS.filter((id) => id !== "cloud");
+}
 
 type SettingsLayoutProps = {
   activeSection: SettingsSectionId;
@@ -56,7 +62,7 @@ export function SettingsLayout({
         </div>
 
         <div className="flex border border-white/[0.06] bg-[#0e0e0e] p-1">
-          {SETTINGS_SECTION_IDS.map((sectionId) => (
+          {visibleSettingsSectionIds().map((sectionId) => (
             <button
               key={sectionId}
               type="button"
