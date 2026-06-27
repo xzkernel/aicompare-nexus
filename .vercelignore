@@ -1,0 +1,7 @@
+backend/
+app/
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile
+nginx.conf
+scripts/
