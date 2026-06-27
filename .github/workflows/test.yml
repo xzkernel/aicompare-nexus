@@ -60,35 +60,19 @@ jobs:
       with:
         name: playwright-report-${{ matrix.node-version }}
         path: |
-          testsprite_tests/test-results/
           playwright-report/
         retention-days: 30
     
     - name: Comment PR with test results
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && success()
       uses: actions/github-script@v7
       with:
         script: |
-          const fs = require('fs');
-          let testResults = 'Test results not available';
-          
-          try {
-            const resultsPath = 'testsprite_tests/test-results.json';
-            if (fs.existsSync(resultsPath)) {
-              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-              const passed = results.suites.filter(s => s.specs.every(spec => spec.tests.every(t => t.results.every(r => r.status === 'passed')))).length;
-              const total = results.suites.length;
-              testResults = `✅ **Tests completed**: ${passed}/${total} test suites passed`;
-            }
-          } catch (e) {
-            testResults = '❌ **Test results parsing failed**';
-          }
-          
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: `## TestSprite Test Results\n\n${testResults}\n\n- **Smoke tests**: ${context.job === 'success' ? '✅ PASSED' : '❌ FAILED'}\n- **Full CI**: ${contains(github.event.pull_request.labels.*.name, 'full-ci') ? '✅ ENABLED' : '⏭️ SKIPPED'}\n\nView detailed results in the Actions tab.`
+            body: '## Playwright smoke tests\n\nSmoke tests passed. See the Actions tab for the full report.'
           });
     
     - name: Fail on smoke test failure

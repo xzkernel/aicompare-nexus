@@ -90,3 +90,8 @@ build/
 dist/
 *.tgz
 *.tar.gz
+vite.config.ts.timestamp-*.mjs
+
+# Generated / scratch tooling (never commit)
+testsprite_tests/
+newuifrontend/
