@@ -1,0 +1,70 @@
+import { ENTITY_SCHEMA_VERSION, type SyncMeta } from "@/types/sync";
+import { getDeviceId } from "./device-id";
+import { getLocalDb, notifyLocalDbChange } from "./db";
+import { enqueueSync } from "./sync-queue";
+
+export interface SavedPromptRecord extends SyncMeta {
+  id: string;
+  deletedAt: number | null;
+  title: string;
+  content: string;
+}
+
+export type SavedPromptInput = Omit<
+  SavedPromptRecord,
+  "id" | "schemaVersion" | "updatedAt" | "deviceId" | "deletedAt"
+>;
+
+export async function listPromptRecords(includeDeleted = false): Promise<SavedPromptRecord[]> {
+  const db = await getLocalDb();
+  const all = await db.getAll("saved_prompts");
+  const rows = includeDeleted ? all : all.filter((p) => p.deletedAt == null);
+  return rows.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function putPromptRecord(
+  input: SavedPromptInput & { id?: string },
+  options?: { skipSync?: boolean }
+): Promise<SavedPromptRecord> {
+  const db = await getLocalDb();
+  const now = Date.now();
+  const record: SavedPromptRecord = {
+    id: input.id ?? crypto.randomUUID(),
+    title: input.title,
+    content: input.content,
+    schemaVersion: ENTITY_SCHEMA_VERSION,
+    updatedAt: now,
+    deviceId: getDeviceId(),
+    deletedAt: null,
+  };
+  await db.put("saved_prompts", record);
+  if (!options?.skipSync) {
+    await enqueueSync("saved_prompts", record.id, "upsert");
+  }
+  notifyLocalDbChange();
+  return record;
+}
+
+export async function upsertPromptRecordLocal(
+  record: SavedPromptRecord,
+  options?: { skipSync?: boolean }
+): Promise<void> {
+  const db = await getLocalDb();
+  await db.put("saved_prompts", record);
+  if (!options?.skipSync && record.deletedAt == null) {
+    await enqueueSync("saved_prompts", record.id, "upsert");
+  } else if (!options?.skipSync && record.deletedAt != null) {
+    await enqueueSync("saved_prompts", record.id, "delete");
+  }
+  notifyLocalDbChange();
+}
+
+export async function softDeletePromptRecord(id: string): Promise<void> {
+  const db = await getLocalDb();
+  const row = await db.get("saved_prompts", id);
+  if (!row) return;
+  const now = Date.now();
+  await db.put("saved_prompts", { ...row, deletedAt: now, updatedAt: now });
+  await enqueueSync("saved_prompts", id, "delete");
+  notifyLocalDbChange();
+}
