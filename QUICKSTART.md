@@ -1,10 +1,10 @@
 # Quick Start
 
-> Full guide: [README.md](./README.md) · Self-hosting: [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md)
+> Full guide: [README.md](./README.md) · Deploy: [DEPLOY.md](./DEPLOY.md) · Self-hosting: [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md)
 
 ```bash
 git clone https://github.com/Archiixyz/aicompare-nexus.git
-cd modelwise
+cd aicompare-nexus
 
 npm install
 
@@ -27,8 +27,15 @@ Add API keys in **Settings**, then compare models in **Playground**.
 ## Verify
 
 ```bash
-cd backend && python test_server.py
+curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8001/api/v1/models
 ```
+
+## Production (Vercel + Railway)
+
+1. Deploy `backend/` to **Railway** — set `CORS_ORIGINS` to your Vercel URL.
+2. Deploy repo root to **Vercel** — set `VITE_API_URL` to your Railway URL.
+3. See [DEPLOY.md](./DEPLOY.md) for the full checklist.
 
 ## Docker (optional)
 

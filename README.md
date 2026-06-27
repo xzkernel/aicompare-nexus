@@ -4,7 +4,18 @@
 
 Compare two models side-by-side with live SSE streaming, divergence analysis, and BYOK provider routing — self-hosted, local-first, no hosted inference layer.
 
+**Live demo:** [aicompare-nexus.vercel.app](https://aicompare-nexus.vercel.app) · **Repository:** [github.com/Archiixyz/aicompare-nexus](https://github.com/Archiixyz/aicompare-nexus)
+
 ![ModelWise playground — streaming compare](./docs/screenshots/playground.png)
+
+---
+
+## Privacy & security (BYOK)
+
+- **Your API keys stay in the browser** — they are sent directly to the backend as request headers for compare/stream calls and are **never stored server-side**.
+- **Sessions and preferences** are saved locally in IndexedDB unless you optionally enable Supabase cloud sync.
+- **No account required** to compare models. Sign-in is optional and only for multi-device session backup.
+- Details: [docs/PRIVACY.md](./docs/PRIVACY.md)
 
 ---
 
@@ -17,6 +28,7 @@ Compare two models side-by-side with live SSE streaming, divergence analysis, an
 - **Dynamic model registry** — `GET /api/v1/models` with capability metadata
 - **Local session persistence** — comparison history in browser storage
 - **Self-hostable** — Vite + FastAPI, Docker optional
+- **Multilingual UI** — English, French, Arabic (RTL)
 - **Provider abstraction** — OpenAI, Google, Anthropic, OpenRouter relay, custom HTTP
 
 ---
@@ -79,7 +91,7 @@ Details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [docs/STREAMING.md](.
 
 ```bash
 git clone https://github.com/Archiixyz/aicompare-nexus.git
-cd modelwise
+cd aicompare-nexus
 
 npm install
 
@@ -147,7 +159,17 @@ See [backend/env.env.example](./backend/env.env.example).
 
 ### Frontend
 
-No `.env` required for local dev — Vite proxies API calls. For Docker/production builds, see [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
+No `.env` required for local dev — Vite proxies API calls.
+
+For production (Vercel + Railway split deploy), set:
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | Public Railway backend URL (no trailing slash) |
+| `VITE_SUPABASE_URL` | Optional — cloud sync |
+| `VITE_SUPABASE_ANON_KEY` | Optional — cloud sync |
+
+See [DEPLOY.md](./DEPLOY.md) and [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
 
 ---
 
@@ -209,6 +231,8 @@ Optional cloud sync: sign in with GitHub or Google to backup sessions and prompt
 
 | Doc | Topic |
 |-----|-------|
+| [DEPLOY.md](./DEPLOY.md) | Vercel + Railway production deploy |
+| [PRIVACY.md](./docs/PRIVACY.md) | BYOK, local data, optional sync |
 | [CLOUD_SYNC.md](./docs/CLOUD_SYNC.md) | Optional Supabase identity + sync |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
 | [STREAMING.md](./docs/STREAMING.md) | SSE contract |
@@ -226,9 +250,9 @@ Realistic next steps (not committed):
 - Live provider health probes on dashboard
 - Registry `lastVerified` timestamps
 - Cost estimates from registry pricing metadata
-- Export comparison sessions (JSON/Markdown)
+- Dedicated benchmarks workspace
 
-Out of scope: hosted inference, billing, teams, agents, cloud sync.
+Out of scope: hosted inference, billing, teams, agents.
 
 ---
 

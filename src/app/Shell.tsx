@@ -14,8 +14,6 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 const NAV_ITEMS = [
   { key: "dashboard", path: "/dashboard" },
   { key: "playground", path: "/playground" },
-  { key: "sessions", path: null },
-  { key: "benchmarks", path: null },
   { key: "providers", path: "/settings" },
   { key: "settings", path: "/settings" },
 ] as const;
