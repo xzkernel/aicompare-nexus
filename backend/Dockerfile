@@ -35,9 +35,9 @@ USER appuser
 # Expose port
 EXPOSE 8001
 
-# Health check
+# Health check (exec form — Railway builder does not support HEALTHCHECK CMD-SHELL)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD-SHELL curl -f http://localhost:${PORT:-8001}/health || exit 1
+    CMD ["curl", "-f", "http://127.0.0.1:8001/health"]
 
 # Run the application. Railway injects PORT; local/default Docker uses 8001.
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8001}"]
