@@ -1,0 +1,136 @@
+{
+  "language": {
+    "label": "اللغة",
+    "en": "English",
+    "fr": "Français",
+    "ar": "العربية"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "playground": "ساحة التجربة",
+    "sessions": "الجلسات",
+    "benchmarks": "المقارنات المعيارية",
+    "providers": "المزوّدون",
+    "settings": "الإعدادات",
+    "workspace": "مساحة العمل",
+    "newWorkspace": "مساحة جديدة",
+    "docs": "التوثيق",
+    "support": "الدعم",
+    "compare": "مقارنة",
+    "quickstart": "البدء السريع",
+    "github": "GitHub",
+    "signIn": "تسجيل الدخول",
+    "getStarted": "ابدأ الآن",
+    "byokActive": "BYOK نشط",
+    "openNav": "فتح القائمة"
+  },
+  "footer": {
+    "tagline": "تنسيق ذكاء اصطناعي عالي الأداء لعصر النماذج المتقدمة. مُحسَّن للفرق التقنية والباحثين.",
+    "app": "التطبيق",
+    "project": "المشروع",
+    "selfHosting": "الاستضافة الذاتية",
+    "rights": "جميع الحقوق محفوظة."
+  },
+  "settings": {
+    "controlCenter": "مركز التحكم",
+    "subtitle": "البنية التحتية وإدارة المصادقة",
+    "providersConnected_one": "مزوّد واحد متصل",
+    "providersConnected_two": "مزوّدان متصلان",
+    "providersConnected_few": "{{count}} مزوّدين متصلين",
+    "providersConnected_many": "{{count}} مزوّداً متصلاً",
+    "providersConnected_other": "{{count}} مزوّد متصل",
+    "ready": "جاهز",
+    "keysRequired": "المفاتيح مطلوبة",
+    "sections": {
+      "profiles": { "label": "الملفات", "description": "ملفات المفاتيح" },
+      "providers": { "label": "المزوّدون", "description": "نظرة عامة على الاتصال" },
+      "api-keys": { "label": "مفاتيح API", "description": "بيانات الاعتماد والتوجيه" },
+      "storage": { "label": "التخزين", "description": "التصدير والخزنة المحلية" },
+      "cloud": { "label": "السحابة", "description": "مزامنة اختيارية" },
+      "sessions": { "label": "الجلسات", "description": "بيانات المقارنة" },
+      "cost": { "label": "التكلفة", "description": "تقديرات الاستخدام" },
+      "security": { "label": "الأمان", "description": "الخصوصية والعزل" }
+    }
+  },
+  "playground": {
+    "promptWorkspace": "مساحة الموجّه",
+    "charTokens": "{{chars}}/4000 · ~{{tokens}} رمز",
+    "clearPrompt": "مسح الموجّه",
+    "cancel": "إلغاء",
+    "runComparison": "تشغيل المقارنة",
+    "streaming": "بث مباشر…",
+    "shortcut": "⌘/Ctrl+Enter للتشغيل",
+    "placeholder": "أدخل موجّه التقييم…",
+    "modelEval": "تقييم النماذج",
+    "dualCompare": "مقارنة مزدوجة",
+    "securityKeysLocal": "المفاتيح محلية فقط · لا تُزامَن أبداً",
+    "securityUntrustedOutput": "المخرجات محتوى نموذج غير موثوق",
+    "presets": {
+      "reasoning": "استدلال",
+      "benchmark": "معيار",
+      "structured": "منظّم"
+    },
+    "status": {
+      "idle": "خامل",
+      "complete": "مكتمل",
+      "connecting": "جارٍ الاتصال",
+      "connectingProvider": "جارٍ الاتصال بالمزوّد…",
+      "streaming": "بث مباشر",
+      "searching": "بحث على الويب",
+      "grounding": "تأصيل",
+      "failed": "فشل",
+      "cancelled": "ملغى",
+      "awaitingRun": "في انتظار تشغيل المقارنة",
+      "awaitingToken": "في انتظار أول رمز",
+      "unavailable": "الاستجابة غير متاحة",
+      "liveStream": "بث حي",
+      "evaluationComplete": "اكتمل التقييم",
+      "inProgress": "قيد التنفيذ",
+      "ready": "جاهز"
+    }
+  },
+  "compare": {
+    "cannotCompare": "تعذّرت المقارنة",
+    "blocking": {
+      "inProgress": "المقارنة قيد التنفيذ",
+      "enterPrompt": "أدخل موجّهاً للمقارنة",
+      "selectModelA": "اختر نموذجاً للجانب أ",
+      "selectModelB": "اختر نموذجاً للجانب ب",
+      "addKeys": "أضف مفاتيح API لنموذج واحد على الأقل في الإعدادات"
+    },
+    "warnings": {
+      "searchDiffers": "قدرات البحث تختلف بين النماذج — المقارنة تستمر؛ قد يعكس الاختلاف دعم المسار وليس جودة النموذج.",
+      "noSearch": "لا يدعم أي مسار البحث الأصلي — النتائج محادثات غير مؤسَّسة.",
+      "forceSearchA": "النموذج أ لا يدعم البحث الإجباري على هذا المسار.",
+      "forceSearchB": "النموذج ب لا يدعم البحث الإجباري على هذا المسار.",
+      "noKeyA": "النموذج أ ليس له مسار مفتاح API — سيتم تخطي هذا الجانب.",
+      "noKeyB": "النموذج ب ليس له مسار مفتاح API — سيتم تخطي هذا الجانب."
+    }
+  },
+  "auth": {
+    "localMode": "الوضع المحلي",
+    "localModeLabel": "الوضع المحلي",
+    "signInToSync": "تسجيل الدخول للمزامنة",
+    "optionalSync": "مزامنة سحابية اختيارية — لا حاجة لحساب للمقارنة.",
+    "optionalCloudSync": "مزامنة سحابية اختيارية",
+    "signInToSyncLink": "تسجيل الدخول للمزامنة ←",
+    "continueLocally": "المتابعة محلياً",
+    "syncOptional": "مزامنة سحابية اختيارية لمنصة تقييم محلية أولاً.",
+    "heroTitle": "زامِن أو",
+    "heroTitleAccent": "ابقَ محلياً.",
+    "heroSubtitle": "ModelWise منصة تقييم محلية أولاً. الهوية السحابية طبقة مزامنة اختيارية — المقارنة تعمل بنفس الطريقة في الحالتين."
+  },
+  "notFound": {
+    "code": "404",
+    "title": "المسار غير موجود",
+    "landing": "الرئيسية",
+    "playground": "ساحة التجربة"
+  },
+  "account": {
+    "syncing": "مزامنة",
+    "syncErr": "خطأ مزامنة",
+    "offline": "غير متصل",
+    "syncOk": "مزامنة OK",
+    "local": "محلي"
+  }
+}

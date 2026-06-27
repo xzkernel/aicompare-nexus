@@ -1,0 +1,133 @@
+{
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "fr": "Français",
+    "ar": "العربية"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "playground": "Playground",
+    "sessions": "Sessions",
+    "benchmarks": "Benchmarks",
+    "providers": "Providers",
+    "settings": "Settings",
+    "workspace": "Workspace",
+    "newWorkspace": "New Workspace",
+    "docs": "Docs",
+    "support": "Support",
+    "compare": "Compare",
+    "quickstart": "Quickstart",
+    "github": "GitHub",
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "byokActive": "BYOK ACTIVE",
+    "openNav": "Open navigation"
+  },
+  "footer": {
+    "tagline": "High-performance AI orchestration for the frontier era. Optimized for technical teams and researchers.",
+    "app": "App",
+    "project": "Project",
+    "selfHosting": "Self-hosting",
+    "rights": "All rights reserved."
+  },
+  "settings": {
+    "controlCenter": "Control Center",
+    "subtitle": "Infrastructure & Auth Management",
+    "providersConnected": "{{count}} provider connected",
+    "providersConnected_plural": "{{count}} providers connected",
+    "ready": "READY",
+    "keysRequired": "KEYS REQUIRED",
+    "sections": {
+      "profiles": { "label": "Profiles", "description": "Key profiles" },
+      "providers": { "label": "Providers", "description": "Connection overview" },
+      "api-keys": { "label": "API Keys", "description": "Credentials & routing" },
+      "storage": { "label": "Storage", "description": "Export & device vault" },
+      "cloud": { "label": "Cloud", "description": "Optional sync" },
+      "sessions": { "label": "Sessions", "description": "Benchmark data" },
+      "cost": { "label": "Cost", "description": "Usage estimates" },
+      "security": { "label": "Security", "description": "Privacy & isolation" }
+    }
+  },
+  "playground": {
+    "promptWorkspace": "Prompt workspace",
+    "charTokens": "{{chars}}/4000 · ~{{tokens}} tokens",
+    "clearPrompt": "Clear prompt",
+    "cancel": "Cancel",
+    "runComparison": "Run comparison",
+    "streaming": "Streaming…",
+    "shortcut": "⌘/Ctrl+Enter to run",
+    "placeholder": "Enter evaluation prompt…",
+    "modelEval": "Model evaluation",
+    "dualCompare": "Dual compare",
+    "securityKeysLocal": "Keys local-only · never synced",
+    "securityUntrustedOutput": "Outputs are untrusted model content",
+    "presets": {
+      "reasoning": "Reasoning",
+      "benchmark": "Benchmark",
+      "structured": "Structured"
+    },
+    "status": {
+      "idle": "Idle",
+      "complete": "Complete",
+      "connecting": "Connecting",
+      "connectingProvider": "Connecting to provider…",
+      "streaming": "Streaming",
+      "searching": "Searching web",
+      "grounding": "Grounding",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "awaitingRun": "Awaiting comparison run",
+      "awaitingToken": "Awaiting first token",
+      "unavailable": "Response unavailable",
+      "liveStream": "Live stream",
+      "evaluationComplete": "Evaluation complete",
+      "inProgress": "In progress",
+      "ready": "Ready"
+    }
+  },
+  "compare": {
+    "cannotCompare": "Cannot compare",
+    "blocking": {
+      "inProgress": "Comparison in progress",
+      "enterPrompt": "Enter a prompt to compare",
+      "selectModelA": "Select a model for side A",
+      "selectModelB": "Select a model for side B",
+      "addKeys": "Add API keys for at least one selected model in Settings"
+    },
+    "warnings": {
+      "searchDiffers": "Search capability differs between models — comparison still runs; divergence may reflect route support, not model quality.",
+      "noSearch": "Neither route supports native search — results are ungrounded chat completions.",
+      "forceSearchA": "Model A does not support forced search on this route.",
+      "forceSearchB": "Model B does not support forced search on this route.",
+      "noKeyA": "Model A has no API key route — this side will be skipped.",
+      "noKeyB": "Model B has no API key route — this side will be skipped."
+    }
+  },
+  "auth": {
+    "localMode": "LOCAL MODE",
+    "localModeLabel": "Local mode",
+    "signInToSync": "Sign in to sync",
+    "optionalSync": "Optional cloud sync — no account required to compare.",
+    "optionalCloudSync": "Optional cloud sync",
+    "signInToSyncLink": "Sign in to sync →",
+    "continueLocally": "Continue locally",
+    "syncOptional": "Optional cloud sync for a local-first evaluation workbench.",
+    "heroTitle": "Sync or",
+    "heroTitleAccent": "stay local.",
+    "heroSubtitle": "ModelWise is a local-first evaluation workbench. Cloud identity is an optional sync layer — compare runs the same either way."
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Route not found",
+    "landing": "Landing",
+    "playground": "Playground"
+  },
+  "account": {
+    "syncing": "SYNCING",
+    "syncErr": "SYNC ERR",
+    "offline": "OFFLINE",
+    "syncOk": "SYNC OK",
+    "local": "LOCAL"
+  }
+}

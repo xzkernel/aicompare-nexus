@@ -1,0 +1,415 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Canonical ModelWise tokens (source of truth) ── */
+    --mw-black: #000000;
+    --mw-graphite: #0c0e0e;
+    --mw-surface: #121414;
+    --mw-surface-elevated: #1a1c1c;
+    --mw-text-primary: #e8eaed;
+    --mw-text-secondary: #9aa0a6;
+    --mw-text-muted: #6b7280;
+    --mw-accent-cyan: #5de6ff;
+    --mw-accent-cyan-dim: rgba(93, 230, 255, 0.12);
+    --mw-border-subtle: rgba(255, 255, 255, 0.06);
+    --mw-border-strong: rgba(255, 255, 255, 0.12);
+
+    /* ── Semantic aliases (consumed by Tailwind + utilities) ── */
+    --bg-base: var(--mw-black);
+    --bg-soft: var(--mw-graphite);
+    --bg-paper: var(--mw-surface);
+    --bg-elevated: var(--mw-surface-elevated);
+    --page-bg: var(--bg-base);
+    --surface-bg: var(--bg-soft);
+
+    --text-primary: var(--mw-text-primary);
+    --text-secondary: var(--mw-text-secondary);
+    --text-muted: var(--mw-text-muted);
+    --heading-color: var(--text-primary);
+    --body-color: var(--text-secondary);
+    --border-color: var(--mw-border-subtle);
+
+    --stroke-subtle: var(--mw-border-subtle);
+    --stroke-strong: var(--mw-border-strong);
+    --accent-cyan: var(--mw-accent-cyan);
+
+    --brand-default: var(--mw-surface);
+    --brand-100: rgba(93, 230, 255, 0.08);
+    --brand-200: rgba(93, 230, 255, 0.14);
+    --brand-400: #7eeaff;
+    --brand-500: var(--mw-accent-cyan);
+    --brand-600: #3ec9e0;
+    --brand-700: #2aa8bd;
+
+    --accent-green: #24d3b5;
+    --accent-yellow: #ffd166;
+    --accent-red: #ff6b6b;
+    --accent-purple: #b490ff;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-2xl: 14px;
+    --radius: 0.5rem;
+
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-gutter: 24px;
+    --space-stack-sm: 8px;
+    --space-stack-md: 16px;
+    --space-stack-lg: 48px;
+    --layout-max: 1280px;
+
+    --motion-fast: 150ms;
+    --motion-base: 220ms;
+    --motion-slow: 350ms;
+
+    --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.35);
+    --shadow-hard: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-card: 0 0 0 1px var(--stroke-subtle);
+    --shadow-card-hover: 0 0 0 1px var(--stroke-strong);
+    --shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-deep: 0 4px 12px rgba(0, 0, 0, 0.45);
+
+    /* Legacy semantic colors */
+    --color-bg-primary: var(--bg-base);
+    --color-bg-surface: var(--bg-soft);
+    --color-bg-secondary: var(--bg-paper);
+    --color-border-primary: var(--stroke-subtle);
+    --color-border-secondary: var(--stroke-strong);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-muted: var(--text-muted);
+    --color-accent-primary: var(--accent-cyan);
+    --color-accent-secondary: var(--mw-accent-cyan-dim);
+    --color-accent-danger: var(--accent-red);
+    --color-accent-success: var(--accent-green);
+    --color-accent-warning: var(--accent-yellow);
+    --color-accent-info: var(--accent-cyan);
+
+    /* shadcn/ui — light theme */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --color-bg-primary: var(--bg-base);
+    --color-bg-surface: var(--bg-soft);
+    --color-bg-secondary: var(--bg-paper);
+    --color-border-primary: var(--stroke-subtle);
+    --color-border-secondary: var(--stroke-strong);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-muted: var(--text-muted);
+    --color-accent-primary: var(--accent-cyan);
+    --color-accent-secondary: var(--mw-accent-cyan-dim);
+
+    --background: 0 0% 0%;
+    --foreground: 210 20% 92%;
+    --card: 180 4% 7%;
+    --card-foreground: 210 20% 92%;
+    --popover: 180 4% 7%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 187 100% 68%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 180 3% 12%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 180 3% 12%;
+    --muted-foreground: 215 10% 55%;
+    --accent: 180 3% 14%;
+    --accent-foreground: 210 20% 92%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 180 3% 14%;
+    --input: 180 3% 14%;
+    --ring: 187 100% 68%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background-color: var(--page-bg); /* Using true dark theme page background */
+    color: var(--body-color); /* Using true dark theme body text color */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    color: var(--heading-color); /* Using true dark theme heading color */
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-primary) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-primary);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-border-secondary);
+  }
+
+  /* Skeleton animation */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-border-primary) 25%,
+      var(--color-border-secondary) 50%,
+      var(--color-border-primary) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Focus styles */
+  .focus-visible-ring {
+    @apply focus-visible:ring-2 focus-visible:ring-accent-cyan/40 focus-visible:outline-none;
+  }
+
+  .mw-label-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .mw-diff-divergent {
+    background-color: rgba(93, 230, 255, 0.08);
+    box-shadow: inset 2px 0 0 rgba(93, 230, 255, 0.45);
+  }
+}
+
+@layer utilities {
+  /* Design System Utilities - True Dark Theme */
+  .bg-page { background-color: var(--page-bg); }
+  .bg-surface { background-color: var(--surface-bg); }
+  .bg-bg-base { background-color: var(--bg-base); }
+  .bg-bg-soft { background-color: var(--bg-soft); }
+  .bg-bg-paper { background-color: var(--bg-paper); }
+
+  .text-heading { color: var(--heading-color); }
+  .text-body { color: var(--body-color); }
+  .text-text-primary { color: var(--text-primary); }
+  .text-text-secondary { color: var(--text-secondary); }
+  .text-text-muted { color: var(--text-muted); }
+
+  .border-border { border-color: var(--border-color); }
+  .ring-stroke-subtle { --tw-ring-color: var(--stroke-subtle); }
+  .ring-stroke-strong { --tw-ring-color: var(--stroke-strong); }
+
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-hard { box-shadow: var(--shadow-hard); }
+  .shadow-surface { box-shadow: var(--shadow-surface); }
+  .shadow-deep { box-shadow: var(--shadow-deep); }
+
+  .from-brand-700\/20 {
+    --tw-gradient-from: rgb(46 168 189 / 0.12);
+    --tw-gradient-to: rgb(46 168 189 / 0);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+
+}
+
+/* Prose overrides for markdown */
+.prose {
+  color: var(--color-text-primary);
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  color: var(--color-text-primary);
+}
+
+.prose p {
+  color: var(--color-text-primary);
+}
+
+.prose strong {
+  color: var(--color-text-primary);
+}
+
+.prose code {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.prose pre {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.prose blockquote {
+  border-left-color: var(--color-accent-primary);
+  color: var(--color-text-secondary);
+}
+
+.prose a {
+  color: var(--color-accent-primary);
+}
+
+.prose a:hover {
+  color: var(--color-accent-secondary);
+}
+
+/* Global safety net for Radix portals */
+[data-radix-select-content],
+[data-radix-popover-content] {
+  background-color: var(--bg-paper) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--stroke-subtle) !important;
+}
+
+/* ── App shell: Stitch composition system ── */
+
+/* Perspective grid texture — Stitch dashboard/playground background */
+.perspective-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Landing: Stitch composition system (structural port) ── */
+
+.landing-page {
+  background-color: #080808;
+  color: #e2e2e2;
+  overflow-x: hidden;
+}
+
+/* Fixed grain — opacity 0.02 matching Stitch source */
+.landing-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Hero: 24px dot grid (Stitch: background-size: 24px 24px) */
+.landing-dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Hero: center radial glow */
+.landing-radial-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+}
+
+/* Product mockup section glow */
+.landing-section-glow {
+  background: radial-gradient(600px circle at 50% 50%, rgba(255, 255, 255, 0.015), transparent 70%);
+}
+
+/* Ghost typography — inside h1, Stitch values */
+.landing-hero-ghost {
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.05);
+  color: transparent;
+  user-select: none;
+}
+
+/* Instrument Serif display — Stitch exact values */
+.landing-serif-display {
+  font-family: "Instrument Serif", Georgia, serif;
+  letter-spacing: -0.04em;
+  line-height: 0.85;
+}
+
+/* Workbench perspective — single X axis only (no rotateY, no scale) */
+.perspective-mockup {
+  transform: perspective(1200px) rotateX(10deg);
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.perspective-mockup:hover {
+  transform: perspective(1200px) rotateX(5deg);
+}
+
+/* Structural 1px border — Stitch terminal-border */
+.terminal-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Higher-contrast border for mockup shell */
+.terminal-border-high {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Workflow vertical line */
+.landing-step-line {
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+/* RTL shell layout — logical offsets for sidebar + main */
+.shell-sidebar {
+  inset-inline-start: 0;
+}
+
+.shell-header-offset {
+  inset-inline-start: 16rem;
+}
+
+.shell-main-offset {
+  margin-inline-start: 16rem;
+}
+
+[dir="rtl"] .group:hover .group-hover\:translate-x-1 {
+  --tw-translate-x: -0.25rem;
+}

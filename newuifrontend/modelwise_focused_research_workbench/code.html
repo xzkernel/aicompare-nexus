@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModelWise | AI Research &amp; Orchestration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#2f3131",
+                        "on-secondary-container": "#00424c",
+                        "syntax-const": "#56b6c2",
+                        "on-secondary-fixed": "#001f25",
+                        "syntax-keyword": "#c678dd",
+                        "on-surface": "#e5e2e1",
+                        "on-tertiary-container": "#656463",
+                        "inverse-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "on-tertiary": "#313030",
+                        "syntax-string": "#98c379",
+                        "tertiary": "#ffffff",
+                        "primary": "#ffffff",
+                        "secondary-fixed": "#a2eeff",
+                        "on-secondary": "#00363e",
+                        "premium-border-high": "rgba(255, 255, 255, 0.08)",
+                        "surface-container-lowest": "#0a0a0a",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "tertiary-fixed": "#e5e2e1",
+                        "surface-container": "#111111",
+                        "tertiary-container": "#e5e2e1",
+                        "surface-container-high": "#181818",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "primary-container": "#e2e2e2",
+                        "on-primary-container": "#636565",
+                        "surface-variant": "#222222",
+                        "on-error": "#690005",
+                        "primary-fixed": "#e2e2e2",
+                        "on-primary-fixed-variant": "#454747",
+                        "syntax-comment": "#5c6370",
+                        "surface-tint": "#c6c6c7",
+                        "surface-bright": "#1e1e1e",
+                        "on-surface-variant": "#8e8e8e",
+                        "on-background": "#e5e2e1",
+                        "surface-container-highest": "#282828",
+                        "secondary-fixed-dim": "#4ad8f0",
+                        "secondary-container": "#00b6ce",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0a0a0a",
+                        "secondary": "#5de6ff",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "background": "#080808",
+                        "on-secondary-fixed-variant": "#004e5a",
+                        "premium-border": "rgba(255, 255, 255, 0.04)",
+                        "inverse-on-surface": "#313030",
+                        "on-primary-fixed": "#1a1c1c",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "outline-variant": "#2a2a2a",
+                        "surface-dim": "#080808",
+                        "surface-container-low": "#0d0d0d",
+                        "error": "#ffb4ab",
+                        "inverse-primary": "#5d5f5f",
+                        "outline": "#333333"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.375rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-safe": "40px",
+                        "gutter": "24px",
+                        "stack-md": "16px",
+                        "container-max": "1280px",
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "stack-lg": "48px"
+                    },
+                    "fontFamily": {
+                        "display": ["Instrument Serif"],
+                        "body": ["Inter"],
+                        "mono": ["Geist Mono"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #080808; color: #e5e2e1; -webkit-font-smoothing: antialiased; }
+        .grain-overlay {
+            position: fixed; inset: 0;
+            background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDBoO-bqI8I9xfbQyJVE0tDhkzx6mDgg4t3mHD5laDrt3Osbag4QUthsyBnrc5r4wslTVI09AZGFsjVCM_bFh5ZELD_UIGDt_ULSAU2k4BEOhOE4NOjx0d6OEIJ9FtY3rOT1Iwi5M6jGv-NbexbZ-qRMH4aO_kWUqlGS9d_Y8G0VIGaMV8eOa7yLSMRaoQfxgK5EW2fIGT9oolL7x-EONoQFDO1ycFlg-y0_4nn2oPht9Hr5aV-G_aHDU5oavb8lEWgURebRa5Lr_E");
+            opacity: 0.01; pointer-events: none; z-index: 9999;
+        }
+        .dot-grid {
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        .cursor-blink { animation: blink 1s step-end infinite; border-right: 2px solid #5de6ff; }
+        @keyframes blink { 50% { border-color: transparent; } }
+        .perspective-view { transform: perspective(3000px) rotateX(10deg) translateY(-40px); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .perspective-view:hover { transform: perspective(3000px) rotateX(4deg) translateY(-50px); }
+        .workflow-line { background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 20%, rgba(255,255,255,0.05) 80%, rgba(255,255,255,0) 100%); }
+        .faq-accordion .faq-content { max-height: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .faq-accordion.open .faq-content { max-height: 300px; padding-top: 1rem; padding-bottom: 0.5rem; }
+        .faq-accordion .icon { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .faq-accordion.open .icon { transform: rotate(45deg); }
+        .ghost-text { opacity: 0.05; user-select: none; pointer-events: none; }
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    </style>
+</head>
+<body class="font-body selection:bg-secondary/20">
+<div class="grain-overlay"></div>
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 w-full z-50 px-margin-safe py-5 flex justify-between items-center bg-background/60 backdrop-blur-xl border-b premium-border">
+<div class="flex items-center gap-12">
+<div class="flex items-center gap-2.5">
+<div class="w-5 h-5 bg-white rounded-sm flex items-center justify-center">
+<span class="text-[10px] font-bold text-black">M</span>
+</div>
+<span class="font-display text-xl tracking-tight text-primary">ModelWise</span>
+</div>
+<div class="hidden lg:flex items-center gap-8">
+<a class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant hover:text-white transition-colors" href="#">Workbench</a>
+<a class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant hover:text-white transition-colors" href="#">Documentation</a>
+<a class="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant hover:text-white transition-colors" href="#">Models</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<a class="text-[11px] font-mono text-on-surface-variant hover:text-white transition-colors" href="#">Sign In</a>
+<button class="px-5 py-2.5 bg-white text-black text-[10px] font-mono font-bold uppercase tracking-widest rounded-sm hover:bg-secondary transition-all">Get Started</button>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="relative min-h-screen pt-48 pb-32 px-margin-safe overflow-hidden dot-grid"><div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(circle at center, rgba(93, 230, 255, 0.05) 0%, transparent 70%);"></div>
+<!-- Background Ghost Layers -->
+<div class="max-w-container-max mx-auto relative">
+<div class="flex flex-col mb-32 relative z-10">
+<div class="inline-flex items-center gap-3 mb-10 opacity-60">
+<span class="font-mono text-[9px] tracking-[0.3em] uppercase border-r premium-border pr-4">Research Engine</span>
+<span class="font-mono text-[9px] tracking-[0.3em] uppercase text-secondary">v1.0.4 Stable</span>
+</div>
+<h1 class="flex flex-col gap-0 select-none"><span class="font-display text-[7vw] md:text-[100px] leading-[0.85] tracking-[-0.05em] text-white">Compare</span><div class="flex items-baseline gap-6 md:-mt-2"><span class="font-display text-[7vw] md:text-[100px] leading-[0.85] tracking-[-0.05em] italic text-secondary/80 translate-x-[2%]">Models</span></div><span class="font-display text-[7vw] md:text-[100px] leading-[0.85] tracking-[-0.05em] text-white translate-x-[1%]">Grounded.</span></h1>
+</div>
+<!-- Workbench Mockup (Professionalized) -->
+<div class="relative z-30 perspective-view mx-auto max-w-7xl">
+<div class="bg-[#0c0c0c] rounded-xl overflow-hidden border premium-border-high shadow-[0_80px_160px_-40px_rgba(0,0,0,1)] border-secondary/20">
+<!-- Toolbar/Tabs -->
+<div class="h-10 bg-surface-container flex items-center justify-between px-4 border-b premium-border">
+<div class="flex items-center gap-4">
+<div class="flex gap-1.5 mr-2">
+<div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-white/10"></div>
+</div>
+<div class="flex items-center h-full">
+<div class="px-3 h-10 flex items-center gap-2 border-r premium-border bg-surface text-[10px] font-mono text-white border-t-2 border-t-secondary">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+                                comparison_01.labs
+                            </div>
+<div class="px-3 h-10 flex items-center gap-2 border-r premium-border text-[10px] font-mono text-on-surface-variant hover:bg-white/5 cursor-pointer">
+                                benchmarking.json
+                            </div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-2.5 py-1 bg-white/5 rounded text-[9px] font-mono text-secondary">
+<span class="w-1 h-1 rounded-full bg-secondary animate-pulse"></span>
+                            Streaming
+                        </div>
+<div class="h-4 w-[1px] bg-white/10"></div>
+<span class="material-symbols-outlined text-base text-on-surface-variant hover:text-white cursor-pointer">tune</span>
+</div>
+</div>
+<div class="flex h-[580px]">
+<!-- Sidebar: Navigation -->
+<div class="w-11 border-r premium-border bg-surface-container-low flex flex-col items-center py-4 gap-6">
+<span class="material-symbols-outlined text-lg text-secondary">account_tree</span>
+<span class="material-symbols-outlined text-lg text-on-surface-variant">folder_open</span>
+<span class="material-symbols-outlined text-lg text-on-surface-variant">history</span>
+<div class="mt-auto flex flex-col gap-4">
+<span class="material-symbols-outlined text-lg text-on-surface-variant">settings</span>
+<div class="w-6 h-6 rounded bg-gradient-to-br from-white/10 to-transparent border premium-border"></div>
+</div>
+</div>
+<!-- Sidebar: Sessions -->
+<div class="w-56 border-r premium-border bg-surface-container-low hidden md:flex flex-col py-4">
+<div class="px-4 mb-4 flex items-center justify-between">
+<span class="text-[9px] font-mono uppercase tracking-widest opacity-40">Sessions</span>
+<span class="material-symbols-outlined text-xs opacity-40">add</span>
+</div>
+<div class="space-y-1">
+<div class="px-4 py-2 bg-white/5 border-l-2 border-secondary text-[10px] font-mono text-white flex items-center justify-between">
+                                logic_v2_eval
+                                <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+<div class="px-4 py-2 hover:bg-white/5 text-[10px] font-mono text-on-surface-variant cursor-pointer transition-colors">
+                                quantum_state_bench
+                            </div>
+<div class="px-4 py-2 hover:bg-white/5 text-[10px] font-mono text-on-surface-variant cursor-pointer transition-colors">
+                                semantic_diff_test
+                            </div>
+</div>
+</div>
+<!-- Main Editor -->
+<div class="flex-1 flex flex-col min-w-0">
+<!-- Top Prompt Area -->
+<div class="p-4 border-b premium-border bg-surface">
+<div class="bg-surface-container-high border premium-border p-3 rounded flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-sm">psychology</span>
+<div class="flex-1 text-[11px] font-mono leading-relaxed">
+<span class="text-on-surface-variant">Prompt:</span> Analyze the following quantum state persistence module for potential race conditions. <span class="cursor-blink">|</span>
+</div>
+</div>
+</div>
+<!-- Split View Content -->
+<div class="flex-1 grid grid-cols-2 divide-x premium-border overflow-hidden">
+<!-- Left: Model A -->
+<div class="flex flex-col bg-surface overflow-hidden">
+<div class="h-9 border-b premium-border flex items-center justify-between px-4 bg-white/[0.01]">
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-mono font-medium text-white">GPT-4o</span>
+<div class="flex gap-1 items-center px-1.5 py-0.5 bg-secondary/10 text-secondary text-[8px] font-mono rounded">
+<span class="material-symbols-outlined text-[10px]">analytics</span>
+                                            0.94 Score
+                                        </div>
+</div>
+<div class="text-[9px] font-mono opacity-40">64ms latency</div>
+</div>
+<div class="p-5 font-mono text-[11px] leading-relaxed overflow-y-auto space-y-4">
+<div class="text-syntax-comment">// Response stream starting...</div>
+<div class="text-on-surface">The persistence module exhibits <span class="bg-secondary/10 text-secondary px-1 rounded">consistent atomicity</span> across the measurement window. No drift detected in high-precision mode.</div>
+<div class="p-3 bg-white/[0.02] border premium-border rounded-lg space-y-2">
+<div class="flex justify-between text-[8px] font-mono uppercase tracking-widest opacity-40">
+<span>Tokens</span>
+<span>Probability</span>
+</div>
+<div class="flex gap-1 flex-wrap">
+<span class="px-1 bg-white/10 rounded">99.2%</span>
+<span class="px-1 bg-white/10 rounded">98.4%</span>
+<span class="px-1 bg-secondary/20 rounded">84.1%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Model B -->
+<div class="flex flex-col bg-surface overflow-hidden">
+<div class="h-9 border-b premium-border flex items-center justify-between px-4 bg-white/[0.01]">
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-mono font-medium text-white">Claude 3.5 Sonnet</span>
+<div class="flex gap-1 items-center px-1.5 py-0.5 bg-white/5 text-on-surface-variant text-[8px] font-mono rounded">
+<span class="material-symbols-outlined text-[10px]">compare</span>
+                                            Baseline
+                                        </div>
+</div>
+<div class="text-[9px] font-mono opacity-40">112ms latency</div>
+</div>
+<div class="p-5 font-mono text-[11px] leading-relaxed overflow-y-auto space-y-4 opacity-70">
+<div class="text-syntax-comment">// Diff analysis enabled</div>
+<div class="text-on-surface">The module shows <span class="bg-red-500/10 text-red-400 px-1 rounded line-through">potential drift</span> <span class="bg-green-500/10 text-green-400 px-1 rounded italic">negligible drift</span> under the current parameters. Execution remains within bounds.</div>
+<div class="shimmer h-12 rounded-lg border premium-border"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Status -->
+<div class="h-8 bg-surface-container border-t premium-border flex items-center justify-between px-4">
+<div class="flex gap-6 items-center">
+<span class="text-[9px] font-mono opacity-40">Tokens: 242/4096</span>
+<span class="text-[9px] font-mono opacity-40">Strategy: Parallel-N</span>
+</div>
+<div class="flex gap-3">
+<div class="flex items-center gap-1.5">
+<div class="w-1 h-1 rounded-full bg-secondary"></div>
+<span class="text-[9px] font-mono opacity-40">Synced</span>
+</div>
+<span class="text-[9px] font-mono opacity-40">v1.0.4</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Advanced Features -->
+<section class="py-32 px-margin-safe relative">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row gap-12 items-start mb-24">
+<div class="flex-1">
+<span class="font-mono text-[10px] uppercase tracking-[0.4em] text-secondary mb-4 block">Evaluation Matrix</span>
+<h2 class="font-display text-6xl mb-8 leading-[1.1]">Benchmark across<br/>hundreds of routes.</h2>
+<p class="text-lg text-on-surface-variant font-light max-w-xl leading-relaxed">
+                    Compare performance across model tiers, regional providers, and quantization levels in one unified research environment.
+                </p>
+</div>
+<div class="w-full md:w-1/2 bg-surface-container-high border premium-border-high rounded-xl p-8 relative overflow-hidden group">
+<div class="flex items-center justify-between mb-8">
+<span class="text-[10px] font-mono opacity-50 uppercase tracking-widest">Live Benchmark</span>
+<span class="text-[10px] font-mono text-secondary">REFRESHING...</span>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-mono">
+<span class="text-white">GPT-4o (Standard)</span>
+<span class="opacity-40">0.08s</span>
+</div>
+<div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[92%] transition-all duration-1000"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-mono">
+<span class="text-white">Claude 3.5 Sonnet</span>
+<span class="opacity-40">0.14s</span>
+</div>
+<div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-white/20 w-[88%] transition-all duration-1000 delay-200"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-mono">
+<span class="text-white">Llama 3 70B (Grounded)</span>
+<span class="opacity-40">0.06s</span>
+</div>
+<div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[76%] transition-all duration-1000 delay-500"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="bg-surface-container border premium-border rounded-lg p-8">
+<span class="material-symbols-outlined text-secondary mb-6">vpn_lock</span>
+<h4 class="font-bold text-sm uppercase tracking-wider mb-2">VPC Transit</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Stateless routing infrastructure. Keys and prompts are processed in encrypted memory buffers.</p>
+</div>
+<div class="bg-surface-container border premium-border rounded-lg p-8">
+<span class="material-symbols-outlined text-secondary mb-6">layers</span>
+<h4 class="font-bold text-sm uppercase tracking-wider mb-2">Multiplexing</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Broadcast single requests to multiple providers simultaneously with automatic retry logic.</p>
+</div>
+<div class="bg-surface-container border premium-border rounded-lg p-8">
+<span class="material-symbols-outlined text-secondary mb-6">history_edu</span>
+<h4 class="font-bold text-sm uppercase tracking-wider mb-2">Audit Logs</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Full traceability for compliance. Every inference call is logged with performance metadata.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Workflow Section -->
+<section class="py-32 px-margin-safe relative overflow-hidden bg-surface-container-low">
+<div class="max-w-4xl mx-auto relative">
+<div class="text-center mb-32">
+<span class="font-mono text-[10px] tracking-[0.4em] uppercase text-secondary/60 mb-4 block">Workflow</span>
+<h2 class="font-display text-6xl">Streamlined Logic.</h2>
+</div>
+<div class="relative">
+<div class="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[1px] workflow-line"></div>
+<div class="space-y-48">
+<!-- Step 01 -->
+<div class="relative flex items-center justify-center">
+<div class="w-1/2 pr-16 text-right">
+<div class="inline-flex items-center gap-3 text-secondary font-mono text-[9px] mb-2">
+<span class="opacity-40">T+0MS</span>
+<span class="tracking-widest uppercase">Input</span>
+</div>
+<h4 class="text-xl font-medium mb-2">Configuration</h4>
+<p class="text-sm text-on-surface-variant font-light">Define your provider array through the workbench or native research SDK.</p>
+</div>
+<div class="relative z-10 w-10 h-10 rounded-full bg-background border-2 border-secondary/50 flex items-center justify-center font-mono text-[10px] shadow-[0_0_20px_rgba(93,230,255,0.1)]">
+                        01
+                    </div>
+<div class="w-1/2"></div>
+</div>
+<!-- Step 02 -->
+<div class="relative flex items-center justify-center">
+<div class="w-1/2"></div>
+<div class="relative z-10 w-10 h-10 rounded-full bg-background border premium-border-high flex items-center justify-center font-mono text-[10px]">
+                        02
+                    </div>
+<div class="w-1/2 pl-16">
+<div class="inline-flex items-center gap-3 text-secondary font-mono text-[9px] mb-2">
+<span class="opacity-40">T+0.05MS</span>
+<span class="tracking-widest uppercase">Routing</span>
+</div>
+<h4 class="text-xl font-medium mb-2">Parallel Execution</h4>
+<p class="text-sm text-on-surface-variant font-light">Requests are multiplexed to selected endpoints with sub-ms latency overhead.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Providers Matrix -->
+<section class="py-32 px-margin-safe">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+<div>
+<span class="font-mono text-[10px] uppercase tracking-[0.3em] text-on-surface-variant">Providers</span>
+<h2 class="font-display text-5xl mt-4">Certified Routes</h2>
+</div>
+<div class="text-[10px] font-mono text-on-surface-variant opacity-40 uppercase tracking-widest">
+                v1.0.4 // Updated 14m ago
+            </div>
+</div>
+<div class="overflow-x-auto border premium-border rounded bg-surface">
+<table class="w-full text-left font-mono text-[11px]">
+<thead>
+<tr class="border-b premium-border uppercase tracking-widest text-on-surface-variant bg-white/[0.01]">
+<th class="p-6 font-medium">Provider</th>
+<th class="p-6 font-medium">Streaming</th>
+<th class="p-6 font-medium">Context Window</th>
+<th class="p-6 font-medium">Multimodal</th>
+<th class="p-6 font-medium">Protocol</th>
+<th class="p-6 font-medium">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y premium-border">
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="p-6 text-white font-medium">OpenAI</td>
+<td class="p-6">gRPC / SSE</td>
+<td class="p-6">128k - 2m</td>
+<td class="p-6 text-on-surface-variant">Vision / Audio</td>
+<td class="p-6 text-on-surface-variant">HTTPS/2</td>
+<td class="p-6">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="opacity-80">Operational</span>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="p-6 text-white font-medium">Anthropic</td>
+<td class="p-6">WS / STREAM</td>
+<td class="p-6">200k</td>
+<td class="p-6 text-on-surface-variant">Vision</td>
+<td class="p-6 text-on-surface-variant">HTTPS/2</td>
+<td class="p-6">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="opacity-80">Operational</span>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors group opacity-60">
+<td class="p-6 text-white font-medium">Meta (Local)</td>
+<td class="p-6">Ollama / Proxy</td>
+<td class="p-6">32k - 128k</td>
+<td class="p-6 text-on-surface-variant">Text Only</td>
+<td class="p-6 text-on-surface-variant">Unix Socket</td>
+<td class="p-6">
+<div class="flex items-center gap-2 opacity-40">
+<span class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
+<span>Standby</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="py-32 px-margin-safe bg-surface-container-low">
+<div class="max-w-2xl mx-auto">
+<h2 class="font-display text-4xl mb-16 text-center">Questions &amp; Support</h2>
+<div class="border-t premium-border">
+<div class="faq-accordion py-5 border-b premium-border cursor-pointer group">
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Can I deploy on-premise?</span>
+<span class="material-symbols-outlined text-on-surface-variant icon text-xl">add</span>
+</div>
+<div class="faq-content text-sm text-on-surface-variant leading-relaxed font-light">
+                    Yes, ModelWise offers a self-hosted Docker orchestration engine for enterprise teams who require complete control over their inference traffic and keys.
+                </div>
+</div>
+<div class="faq-accordion py-5 border-b premium-border cursor-pointer group">
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">How do you handle research data?</span>
+<span class="material-symbols-outlined text-on-surface-variant icon text-xl">add</span>
+</div>
+<div class="faq-content text-sm text-on-surface-variant leading-relaxed font-light">
+                    Our transit layer is stateless. We use encrypted memory buffers to route prompts directly to providers. No metadata or body content is ever persisted without explicit consent.
+                </div>
+</div>
+<div class="faq-accordion py-5 border-b premium-border cursor-pointer group">
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">What is the latency overhead?</span>
+<span class="material-symbols-outlined text-on-surface-variant icon text-xl">add</span>
+</div>
+<div class="faq-content text-sm text-on-surface-variant leading-relaxed font-light">
+                    The ModelWise routing overhead is typically less than 0.05ms, making it virtually transparent even in high-throughput production environments.
+                </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="pt-32 pb-16 px-margin-safe border-t premium-border bg-background">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-24">
+<div class="col-span-1 md:col-span-2">
+<div class="flex items-center gap-2.5 mb-8">
+<div class="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
+<span class="text-[12px] font-bold text-black">M</span>
+</div>
+<span class="font-display text-2xl tracking-tight text-primary">ModelWise</span>
+</div>
+<p class="text-xs text-on-surface-variant max-w-sm leading-relaxed font-mono opacity-60 uppercase tracking-widest">
+                    Open-source model comparison platform for developers and researchers.
+                </p>
+</div>
+<div>
+<h5 class="font-mono text-[9px] uppercase tracking-[0.3em] mb-8 opacity-40">Platform</h5>
+<ul class="space-y-4 text-[11px] font-mono">
+<li><a class="hover:text-white transition-colors" href="#">Workbench</a></li>
+<li><a class="hover:text-white transition-colors" href="#">SDK Documentation</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Research API</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-mono text-[9px] uppercase tracking-[0.3em] mb-8 opacity-40">Corporate</h5>
+<ul class="space-y-4 text-[11px] font-mono">
+<li><a class="hover:text-white transition-colors" href="#">Security Whitepaper</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Changelog</a></li>
+<li><a class="hover:text-white transition-colors" href="#">Support</a></li>
+</ul>
+</div>
+</div>
+<div class="flex flex-col md:flex-row items-center justify-between gap-6 pt-12 border-t premium-border opacity-30">
+<div class="font-mono text-[9px] tracking-[0.3em] uppercase">
+                © 2024 ModelWise Research // v1.0.4 Stable
+            </div>
+<div class="flex gap-10 font-mono text-[9px] tracking-[0.3em] uppercase">
+<a class="hover:text-white transition-colors" href="#">Privacy</a>
+<a class="hover:text-white transition-colors" href="#">Terms</a>
+<a class="hover:text-white transition-colors" href="#">License</a>
+</div>
+</div>
+</div>
+</footer>
+<script>
+    // FAQ Accordion Interaction
+    document.querySelectorAll('.faq-accordion').forEach(item => {
+        item.addEventListener('click', () => {
+            const isOpen = item.classList.contains('open');
+            // Close others
+            document.querySelectorAll('.faq-accordion').forEach(other => other.classList.remove('open'));
+            // Toggle current
+            if (!isOpen) item.classList.add('open');
+        });
+    });
+
+    // Ambient Reveal on Scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('section > div').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+        observer.observe(el);
+    });
+</script>
+</body></html>

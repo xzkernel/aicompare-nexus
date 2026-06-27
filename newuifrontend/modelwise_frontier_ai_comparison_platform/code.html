@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModelWise | Elite AI Benchmarking</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#37393a",
+                        "surface-container-lowest": "#0c0f0f",
+                        "tertiary": "#ffffff",
+                        "primary-fixed": "#e2e2e2",
+                        "on-primary-fixed": "#1a1c1c",
+                        "on-tertiary-container": "#656464",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary": "#313030",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "tertiary-container": "#e5e2e1",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1e2020",
+                        "on-secondary": "#00363e",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#e5e2e1",
+                        "surface-tint": "#c6c6c7",
+                        "tertiary-fixed-dim": "#c9c6c5",
+                        "inverse-on-surface": "#2f3131",
+                        "outline-variant": "#444748",
+                        "on-tertiary-fixed-variant": "#474646",
+                        "background": "#000000",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#e2e2e2",
+                        "surface-container-highest": "#333535",
+                        "surface": "#121414",
+                        "secondary-fixed-dim": "#2fd9f4",
+                        "on-primary": "#2f3131",
+                        "secondary-container": "#00cbe6",
+                        "on-secondary-fixed": "#001f25",
+                        "secondary-fixed": "#a2eeff",
+                        "inverse-primary": "#5d5f5f",
+                        "on-primary-container": "#636565",
+                        "on-surface": "#e2e2e2",
+                        "surface-container-low": "#1a1c1c",
+                        "surface-variant": "#333535",
+                        "on-primary-fixed-variant": "#454747",
+                        "surface-dim": "#121414",
+                        "inverse-surface": "#e2e2e2",
+                        "on-secondary-fixed-variant": "#004e5a",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#00515d",
+                        "secondary": "#5de6ff",
+                        "primary": "#ffffff",
+                        "outline": "#8e9192",
+                        "surface-container-high": "#282a2b",
+                        "on-background": "#e2e2e2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "stack-md": "16px",
+                        "stack-lg": "48px",
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "margin-safe": "40px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg-mobile": ["Instrument Serif"],
+                        "label-mono": ["Geist Mono"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Instrument Serif"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "400"}],
+                        "label-mono": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                        "display-lg": ["84px", {"lineHeight": "1.0", "letterSpacing": "-0.065em", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "1.0", "letterSpacing": "0.1em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>body {
+    background-color: #000;
+    color: #e2e2e2;
+    overflow-x: hidden
+    }
+.grain-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuBztaRRBI_B1hPqCuqoa6tdcaEyJa2-VMnsMQbMfNuiy4bJEPhUyKibpti83GcAAQzGfipvddKzKoTGPfSNHYmDKGndrMCK-YlUsAb3tl2cnG1ubFDsSAikWSsuw8609JO5gQ22EAHLaMcxM36p23CdSoQon_YpYfZemks9tgsnezDL_DSlluMPuXSG7g-RBs-z8xn-F0j1UUIGcTE2YvDsD6kFFTSW5soSSEcYyCn7LO9KikRtmQajpZggwO9l-LpcEA7_mCBQPvI);
+    opacity: 0.02;
+    pointer-events: none;
+    z-index: 9999
+    }
+.dot-grid {
+    background-size: 24px 24px
+    }
+.radial-glow {
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 70%)
+    }
+.hero-ghost {
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.05);
+    color: transparent
+    }
+.terminal-border {
+    border: 1px solid rgba(255, 255, 255, 0.1)
+    }
+.perspective-mockup {
+    transform: perspective(1000px) rotatex(8deg)
+    }
+.step-line {
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent)
+    }
+.cursor-blink {
+    animation: blink 1s step-end infinite
+    }
+@keyframes blink {
+    from, to {
+        opacity: 1;
+        } 50% {
+        opacity: 0;
+        }
+    }
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+        } 50% {
+        transform: translateY(-10px);
+        } 100% {
+        transform: translateY(0px);
+        }
+    }
+.animate-float {
+    animation: float 6s ease-in-out infinite
+    }</style>
+</head>
+<body class="font-body-sm">
+<div class="grain-overlay"></div>
+<!-- Shared Component: TopNavBar -->
+<nav class="fixed top-stack-md left-1/2 -translate-x-1/2 w-[95%] max-w-container-max rounded-full border border-outline-variant/10 z-50 bg-background/80 backdrop-blur-xl flex justify-between items-center px-gutter py-stack-sm">
+<div class="flex items-center gap-stack-sm">
+<img alt="ModelWise Logo" class="w-5 h-5 invert" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAmklEQVR4AezWsQ6AIBADUPX//1kH5qaVawg5yuDAgZYnCTzX5i0Bqz8ogucKvosbks4eRDJqfx/B29zOE1RX7B7XZw+6ZdT39RdkB44qhcb1F0Qrd/VHsCoZwQgyAXbJYfNZ3bQH2Wfm6wk4bzdmRnA4zD9lQXZr+VtXI8sB1Re6xyVgVRQKshPCXUcLgQHRhNX9CVgVj2BV8AMAAP//ci+13gAAAAZJREFUAwALkeBR36CsJgAAAABJRU5ErkJggg=="/>
+<span class="font-display-lg text-headline-md tracking-tighter text-primary">ModelWise</span>
+</div>
+<div class="hidden md:flex items-center gap-gutter">
+<a class="text-on-surface-variant font-label-caps text-label-caps transition-colors duration-300 hover:text-primary hover:bg-surface-bright/20 rounded-full px-4 py-1 transition-all" href="#">Playground</a>
+<a class="text-primary border-b border-primary pb-1 font-label-caps text-label-caps" href="#">Compare</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps transition-colors duration-300 hover:text-primary hover:bg-surface-bright/20 rounded-full px-4 py-1 transition-all" href="#">Docs</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps transition-colors duration-300 hover:text-primary hover:bg-surface-bright/20 rounded-full px-4 py-1 transition-all" href="#">GitHub</a>
+</div>
+<div class="flex items-center gap-stack-sm">
+<button class="font-label-mono text-label-mono px-4 py-2 hover:opacity-70 transition-opacity">Log In</button>
+<button class="bg-primary text-background font-label-mono text-label-mono px-5 py-2 scale-95 active:scale-90 transition-transform duration-200">Get Started</button>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="relative min-height-[90vh] flex flex-col justify-center pt-48 pb-stack-lg px-margin-safe dot-grid overflow-hidden">
+<div class="absolute inset-0 radial-glow pointer-events-none"></div>
+<div class="max-w-container-max mx-auto w-full relative z-10">
+<!-- Staggered Typography -->
+<div class="flex flex-col gap-0 select-none">
+<h1 class="relative">
+<span class="font-display-lg text-[120px] md:text-[180px] leading-none block transform -translate-x-4 opacity-100">compare</span>
+<span class="font-display-lg text-[120px] md:text-[180px] leading-none block italic text-right transform translate-x-4">models</span>
+<span class="font-display-lg text-[120px] md:text-[180px] leading-none block transform translate-y-[-20px]">instantly.</span>
+<!-- Ghost Elements -->
+<span class="hero-ghost absolute top-[-40px] left-[10%] font-display-lg text-[180px] pointer-events-none opacity-20">compare</span>
+<span class="hero-ghost absolute bottom-[-40px] right-[5%] font-display-lg text-[180px] pointer-events-none opacity-20 italic">models</span>
+</h1>
+</div>
+<div class="mt-stack-lg max-w-xl">
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-stack-md">
+                    The orchestration layer for frontier intelligence. Run the same prompt across GPT-5, Claude, Gemini, and Llama simultaneously to eliminate bias and find the perfect response.
+                </p>
+<div class="flex items-center gap-stack-md">
+<span class="font-label-mono text-label-mono text-secondary px-3 py-1 border border-secondary/30">v4.0.1 STABLE</span>
+<span class="font-label-mono text-label-mono text-on-tertiary-container">Available via API and Docker</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Mockup -->
+<section class="py-stack-lg px-margin-safe bg-surface-container-lowest overflow-hidden">
+<div class="max-w-container-max mx-auto">
+<div class="perspective-mockup bg-[#050505] terminal-border rounded-xl shadow-2xl overflow-hidden relative">
+<!-- Toolbar -->
+<div class="bg-surface-container h-10 px-gutter flex justify-between items-center border-b border-outline-variant/10">
+<div class="flex gap-2">
+<div class="w-3 h-3 rounded-full bg-error"></div>
+<div class="w-3 h-3 rounded-full bg-secondary-container"></div>
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+</div>
+<div class="font-label-mono text-label-mono text-on-tertiary-container">modelwise-workbench / comparison_v1.0</div>
+<div class="w-20"></div>
+</div>
+<!-- Comparison Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 min-h-[600px]">
+<!-- GPT Panel -->
+<div class="p-gutter border-r border-outline-variant/10 relative group">
+<div class="flex justify-between items-start mb-gutter">
+<span class="font-label-caps text-label-caps text-on-surface">GPT-5 ULTRA</span>
+<span class="font-label-mono text-label-mono text-secondary flex items-center gap-1">
+<span class="w-1 h-1 bg-secondary rounded-full animate-pulse"></span> 0.9s LATENCY
+                            </span>
+</div>
+<div class="font-label-mono text-[13px] text-on-surface-variant leading-relaxed">
+<span class="text-secondary">import</span> { compute_tensor } <span class="text-secondary">from</span> <span class="text-tertiary-container">"modelwise"</span>;<br/><br/>
+<span class="text-on-tertiary-container">// Optimized execution</span><br/>
+<span class="text-primary">const</span> result = <span class="text-secondary">await</span> compute_tensor({<br/>
+                              engine: <span class="text-tertiary-container">"frontier"</span>,<br/>
+                              precision: <span class="text-secondary">true</span><br/>
+                            });<br/><br/>
+<span class="text-on-tertiary-container">// Result visualization logic...</span>
+</div>
+<!-- Ghost Label -->
+<div class="absolute bottom-4 right-4 font-label-mono text-[10px] text-outline-variant opacity-40">MODEL_CLASS: FRONTIER_XL</div>
+</div>
+<!-- Claude Panel -->
+<div class="p-gutter relative">
+<div class="flex justify-between items-start mb-gutter">
+<span class="font-label-caps text-label-caps text-on-surface">CLAUDE 3.5 OPUS</span>
+<span class="font-label-mono text-label-mono text-secondary flex items-center gap-1">
+<span class="w-1 h-1 bg-secondary rounded-full animate-pulse"></span> 1.2s LATENCY
+                            </span>
+</div>
+<div class="font-label-mono text-[13px] text-on-surface-variant leading-relaxed">
+<span class="text-secondary">async function</span> <span class="text-primary">initialize_nexus</span>() {<br/>
+                              <span class="text-secondary">const</span> stream = <span class="text-secondary">new</span> StreamChannel();<br/>
+                              <span class="text-on-tertiary-container">// Context-aware initialization</span><br/>
+                              stream.on(<span class="text-tertiary-container">'data'</span>, (chunk) =&gt; {<br/>
+                                console.log(<span class="text-tertiary-container">`Processing: ${chunk}`</span>);<br/>
+                              });<br/>
+                            }
+                        </div>
+<div class="absolute bottom-4 right-4 font-label-mono text-[10px] text-outline-variant opacity-40">MODEL_CLASS: ANTHROPIC_ULTRA</div>
+</div>
+</div>
+<!-- Footer Status -->
+<div class="bg-surface-container-lowest h-8 border-t border-outline-variant/10 px-gutter flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="text-[10px] font-label-mono text-on-tertiary-container">UTF-8</span>
+<span class="text-[10px] font-label-mono text-on-tertiary-container">2345 TOKENS</span>
+</div>
+<div class="font-label-mono text-[10px] text-secondary">READY TO EXECUTE</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="py-stack-lg px-margin-safe">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row gap-stack-lg">
+<div class="w-full md:w-1/3">
+<h2 class="font-display-lg text-headline-md sticky top-32">Technical<br/>Capabilities.</h2>
+<p class="font-body-sm text-on-surface-variant mt-stack-md max-w-xs">
+                        Built for architects who demand deterministic outputs from probabilistic systems.
+                    </p>
+</div>
+<div class="w-full md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Feature Card 1 -->
+<div class="p-gutter terminal-border bg-[#050505] h-64 flex flex-col justify-between hover:border-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<div>
+<h3 class="font-headline-md text-body-lg mb-2">Side-by-Side Comparison</h3>
+<p class="font-body-sm text-on-surface-variant">Real-time lateral visual benchmarks across up to 4 models simultaneously with custom diff highlighting.</p>
+</div>
+</div>
+<!-- Feature Card 2 -->
+<div class="p-gutter terminal-border bg-[#050505] h-80 flex flex-col justify-between hover:border-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary">key</span>
+<div>
+<h3 class="font-headline-md text-body-lg mb-2">Bring Your Own Key</h3>
+<p class="font-body-sm text-on-surface-variant">We never store your keys. All orchestration happens locally or within your private VPC with direct provider routing.</p>
+</div>
+</div>
+<!-- Feature Card 3 -->
+<div class="p-gutter terminal-border bg-[#050505] h-80 md:-mt-16 flex flex-col justify-between hover:border-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<div class="font-label-mono text-[10px] p-2 bg-black/50 border border-white/5 rounded mb-4">
+                            $ modelwise up --self-host<br/>
+                            &gt; Initializing local container...<br/>
+                            &gt; Node active at port 4000
+                        </div>
+<div>
+<h3 class="font-headline-md text-body-lg mb-2">Self-Hosting</h3>
+<p class="font-body-sm text-on-surface-variant">Deploy ModelWise as a Docker container within your secure infrastructure for total data sovereignty.</p>
+</div>
+</div>
+<!-- Feature Card 4 -->
+<div class="p-gutter terminal-border bg-[#050505] h-64 flex flex-col justify-between hover:border-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary">layers</span>
+<div>
+<h3 class="font-headline-md text-body-lg mb-2">Metadata Analysis</h3>
+<p class="font-body-sm text-on-surface-variant">Analyze latency, token usage, and cost-per-execution before moving to production scaling.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Workflow Timeline -->
+<section class="py-stack-lg px-margin-safe bg-surface-container-lowest">
+<div class="max-w-4xl mx-auto">
+<h2 class="font-display-lg text-headline-md mb-stack-lg text-center">The Workflow.</h2>
+<div class="relative space-y-24">
+<!-- Vertical Line -->
+<div class="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[1px] step-line"></div>
+<!-- Step 1 -->
+<div class="relative flex items-center justify-between group">
+<div class="w-5/12 text-right">
+<h4 class="font-headline-md text-body-lg text-primary">Enter Prompt</h4>
+<p class="text-on-surface-variant text-body-sm">Define your requirements in pure markdown or JSON schema.</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-black border border-primary flex items-center justify-center relative z-10 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+<span class="font-label-mono">01</span>
+</div>
+<div class="w-5/12"></div>
+</div>
+<!-- Step 2 -->
+<div class="relative flex items-center justify-between">
+<div class="w-5/12"></div>
+<div class="w-10 h-10 rounded-full bg-black border border-outline-variant flex items-center justify-center relative z-10">
+<span class="font-label-mono">02</span>
+</div>
+<div class="w-5/12">
+<h4 class="font-headline-md text-body-lg text-primary">Select Models</h4>
+<p class="text-on-surface-variant text-body-sm">Toggle between OpenAI, Anthropic, Gemini, or local Llama instances.</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="relative flex items-center justify-between">
+<div class="w-5/12 text-right">
+<h4 class="font-headline-md text-body-lg text-primary">Run Comparison</h4>
+<p class="text-on-surface-variant text-body-sm">Execute in parallel with real-time streaming tokens and visual diffs.</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-black border border-outline-variant flex items-center justify-center relative z-10">
+<span class="font-label-mono">03</span>
+</div>
+<div class="w-5/12"></div>
+</div>
+<!-- Step 4 -->
+<div class="relative flex items-center justify-between">
+<div class="w-5/12"></div>
+<div class="w-10 h-10 rounded-full bg-black border border-outline-variant flex items-center justify-center relative z-10">
+<span class="font-label-mono">04</span>
+</div>
+<div class="w-5/12">
+<h4 class="font-headline-md text-body-lg text-primary">Export Analysis</h4>
+<p class="text-on-surface-variant text-body-sm">Save benchmark reports as PDF or integrate via our REST API.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Providers Matrix -->
+<section class="py-stack-lg px-margin-safe">
+<div class="max-w-container-max mx-auto">
+<div class="terminal-border overflow-hidden">
+<div class="grid grid-cols-1 md:grid-cols-4 border-b border-outline-variant/10">
+<div class="p-gutter border-r border-outline-variant/10 bg-surface-container-low">
+<span class="font-label-caps text-label-caps">Provider</span>
+</div>
+<div class="p-gutter border-r border-outline-variant/10 bg-surface-container-low">
+<span class="font-label-caps text-label-caps">Supported Models</span>
+</div>
+<div class="p-gutter border-r border-outline-variant/10 bg-surface-container-low">
+<span class="font-label-caps text-label-caps">Routing Protocol</span>
+</div>
+<div class="p-gutter bg-surface-container-low">
+<span class="font-label-caps text-label-caps">Status</span>
+</div>
+</div>
+<!-- Row 1 -->
+<div class="grid grid-cols-1 md:grid-cols-4 border-b border-outline-variant/10 hover:bg-[#0A0A0A] transition-colors group">
+<div class="p-gutter border-r border-outline-variant/10 font-headline-md text-body-lg">OpenAI</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant">GPT-4o, GPT-5, o1-preview</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant font-label-mono text-[10px]">DIRECT_REST_API</div>
+<div class="p-gutter flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-mono text-label-mono">OPERATIONAL</span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-1 md:grid-cols-4 border-b border-outline-variant/10 hover:bg-[#0A0A0A] transition-colors">
+<div class="p-gutter border-r border-outline-variant/10 font-headline-md text-body-lg">Anthropic</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant">Claude 3.5 Sonnet/Opus</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant font-label-mono text-[10px]">WEBSOCKET_STREAM</div>
+<div class="p-gutter flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-mono text-label-mono">OPERATIONAL</span>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="grid grid-cols-1 md:grid-cols-4 border-b border-outline-variant/10 hover:bg-[#0A0A0A] transition-colors">
+<div class="p-gutter border-r border-outline-variant/10 font-headline-md text-body-lg">Meta</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant">Llama 3.1 8B, 70B, 405B</div>
+<div class="p-gutter border-r border-outline-variant/10 text-on-surface-variant font-label-mono text-[10px]">LOCAL_OLLAMA_PROXY</div>
+<div class="p-gutter flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-mono text-label-mono">OPERATIONAL</span>
+</div>
+</div>
+</div>
+<div class="mt-stack-md flex justify-between items-center text-on-tertiary-container font-label-mono text-[10px]">
+<span>REQUESTS NEVER STORED ON OUR SERVERS</span>
+<span>SECURE END-TO-END ENCRYPTION</span>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="py-stack-lg px-margin-safe bg-surface-container-lowest">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row gap-stack-lg">
+<div class="w-full md:w-1/3">
+<h2 class="font-display-lg text-headline-md">Queries.</h2>
+</div>
+<div class="w-full md:w-2/3 border-t border-outline-variant/10">
+<div class="border-b border-outline-variant/10 py-6 group cursor-pointer">
+<div class="flex justify-between items-center">
+<h4 class="font-headline-md text-body-lg">How is this different from OpenRouter?</h4>
+<span class="material-symbols-outlined group-hover:rotate-45 transition-transform">add</span>
+</div>
+<div class="hidden mt-4 text-on-surface-variant max-w-xl">
+                        ModelWise is an orchestration tool, not just an API proxy. We focus on benchmarking, visual diffs, and local execution monitoring rather than just unified billing.
+                    </div>
+</div>
+<div class="border-b border-outline-variant/10 py-6 group cursor-pointer">
+<div class="flex justify-between items-center">
+<h4 class="font-headline-md text-body-lg">Is my data secure?</h4>
+<span class="material-symbols-outlined group-hover:rotate-45 transition-transform">add</span>
+</div>
+</div>
+<div class="border-b border-outline-variant/10 py-6 group cursor-pointer">
+<div class="flex justify-between items-center">
+<h4 class="font-headline-md text-body-lg">Can I host this on-premise?</h4>
+<span class="material-symbols-outlined group-hover:rotate-45 transition-transform">add</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant/10 py-stack-lg px-margin-safe">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-start gap-stack-lg mb-24">
+<div class="flex flex-col gap-stack-sm">
+<div class="flex items-center gap-2">
+<img alt="ModelWise Logo" class="w-5 h-5 invert" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAmklEQVR4AezWsQ6AIBADUPX//1kH5qaVawg5yuDAgZYnCTzX5i0Bqz8ogucKvosbks4eRDJqfx/B29zOE1RX7B7XZw+6ZdT39RdkB44qhcb1F0Qrd/VHsCoZwQgyAXbJYfNZ3bQH2Wfm6wk4bzdmRnA4zD9lQXZr+VtXI8sB1Re6xyVgVRQKshPCXUcLgQHRhNX9CVgVj2BV8AMAAP//ci+13gAAAAZJREFUAwALkeBR36CsJgAAAABJRU5ErkJggg=="/>
+<span class="font-display-lg text-headline-md text-primary tracking-tighter">ModelWise</span>
+</div>
+<p class="font-label-mono text-label-mono text-on-tertiary-container max-w-xs">
+                        High-performance AI orchestration for the frontier era. Optimized for technical teams and researchers.
+                    </p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-12">
+<div class="flex flex-col gap-4">
+<span class="font-label-caps text-label-caps text-on-surface">Product</span>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Playground</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">CLI Tool</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Self-Hosting</a>
+</div>
+<div class="flex flex-col gap-4">
+<span class="font-label-caps text-label-caps text-on-surface">Resources</span>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Documentation</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">API Reference</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Github</a>
+</div>
+<div class="flex flex-col gap-4">
+<span class="font-label-caps text-label-caps text-on-surface">Company</span>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Privacy Protocol</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">Legal</a>
+<a class="font-label-mono text-label-mono text-on-tertiary-container hover:text-primary transition-all" href="#">System Status</a>
+</div>
+</div>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-outline-variant/10 gap-4">
+<span class="font-label-mono text-[10px] text-on-tertiary-container tracking-widest uppercase">
+                    © 2024 MODELWISE RESEARCH. ALL RIGHTS RESERVED. v4.0.1-STABLE
+                </span>
+<div class="flex gap-stack-md font-label-mono text-[10px] text-on-tertiary-container">
+<span>OPEN-SOURCE</span>
+<span>•</span>
+<span>MIT LICENSED</span>
+<span>•</span>
+<span>SELF-HOSTABLE</span>
+<span>•</span>
+<span>BYOK</span>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Simple interactivity for FAQ
+        document.querySelectorAll('.group.cursor-pointer').forEach(item => {
+            item.addEventListener('click', () => {
+                const content = item.querySelector('.hidden');
+                const icon = item.querySelector('.material-symbols-outlined');
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    icon.style.transform = 'rotate(45deg)';
+                } else {
+                    content.classList.add('hidden');
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
+        // Parallax-ish effect for hero text
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const heroGhosts = document.querySelectorAll('.hero-ghost');
+            heroGhosts.forEach((ghost, index) => {
+                const speed = (index + 1) * 0.1;
+                ghost.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ModelWise Frontier | Research Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;family=Instrument+Serif&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+    font-size: 18px
+    }
+.grain-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDRzlJ2eMvU8PXMzLRfr4UqvuwUl_6b3u4pqodYY6Z-kz-zC0uE8INxgbQlRGqlyT_MwYqAKsIc1xX291HRv-54I9qkUwwBBb1n1fRsvmBVT50XmA_dPXhXd1EewzM3DyVltL2QbD3VwQMM426VjhTcskVJ6ZaqH08sRbiB-QspNk0Fos54CuPFWe4Nq7Je7eaNJ4wWcpbOZ4t2V2GcPdtb6MsyOV4BNBu6d2zZaxRxdu4P5zz_kUWJV3FrqTIUm5AFQdzvEap47vs);
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 100
+    }
+.technical-grid {
+    background-size: 40px 40px;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
+    }
+.perspective-container {
+    perspective: 1200px
+    }
+.model-card-tilt {
+    transform: rotatex(2deg) rotatey(-1deg);
+    transition: transform 0.4s ease
+    }
+.model-card-tilt:hover {
+    transform: rotatex(0deg) rotatey(0deg)
+    }
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 5px rgba(93, 230, 255, 0.2);
+        } 50% {
+        box-shadow: 0 0 15px rgba(93, 230, 255, 0.5);
+        } 100% {
+        box-shadow: 0 0 5px rgba(93, 230, 255, 0.2);
+        }
+    }
+.status-pulse {
+    animation: pulse-glow 2s infinite
+    }
+.blinking-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: #5de6ff;
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+    margin-left: 2px
+    }
+@keyframes blink {
+    from, to {
+        opacity: 1;
+        } 50% {
+        opacity: 0;
+        }
+    }</style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "tertiary-fixed": "#e5e2e1",
+                        "inverse-primary": "#5d5f5f",
+                        "primary": "#ffffff",
+                        "surface-container": "#1e2020",
+                        "background": "#131313",
+                        "surface": "#121414",
+                        "surface-tint": "#c6c6c7",
+                        "tertiary-container": "#e5e2e1",
+                        "syntax-comment": "#444748",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary": "#00363e",
+                        "on-secondary-container": "#00424c",
+                        "surface-dim": "#131313",
+                        "surface-variant": "#353534",
+                        "on-tertiary-container": "#656463",
+                        "on-surface-variant": "#c4c7c8",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "outline-variant": "#444748",
+                        "on-tertiary": "#313030",
+                        "on-primary": "#2f3131",
+                        "surface-container-highest": "#353534",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary-fixed": "#a2eeff",
+                        "on-error-container": "#ffdad6",
+                        "syntax-keyword": "#5de6ff",
+                        "on-primary-container": "#636565",
+                        "secondary": "#4ad8f0",
+                        "primary-container": "#e2e2e2",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "secondary-container": "#00b6ce",
+                        "on-primary-fixed-variant": "#454747",
+                        "premium-border": "rgba(255, 255, 255, 0.06)",
+                        "on-secondary-fixed": "#001f25",
+                        "on-surface": "#e5e2e1",
+                        "on-background": "#e5e2e1",
+                        "syntax-string": "#e5e2e1",
+                        "surface-bright": "#3a3939",
+                        "surface-container-lowest": "#0e0e0e",
+                        "syntax-const": "#ffffff",
+                        "primary-fixed": "#e2e2e2",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#1a1c1c",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "premium-border-high": "rgba(255, 255, 255, 0.12)",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary-fixed-variant": "#004e5a",
+                        "tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#4ad8f0",
+                        "on-error": "#690005",
+                        "outline": "#8e9192"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "stack-lg": "48px",
+                        "stack-md": "16px",
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "margin-safe": "40px"
+                    },
+                    "fontFamily": {
+                        "label-mono-standard": ["Geist Mono"],
+                        "display-hero-mobile": ["Instrument Serif"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-mono-allcaps": ["Geist Mono"],
+                        "display-hero": ["Instrument Serif"],
+                        "headline-section": ["Instrument Serif"]
+                    },
+                    "fontSize": {
+                        "label-mono-standard": ["12px", {"lineHeight": "1", "fontWeight": "400"}],
+                        "display-hero-mobile": ["13vw", {"lineHeight": "0.85", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["24px", {"lineHeight": "1.6", "fontWeight": "300"}],
+                        "label-mono-allcaps": ["10px", {"letterSpacing": "0.3em", "fontWeight": "500"}],
+                        "display-hero": ["180px", {"lineHeight": "0.85", "letterSpacing": "-0.04em", "fontWeight": "400"}],
+                        "headline-section": ["72px", {"lineHeight": "1.1", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-sm text-body-sm selection:bg-secondary selection:text-on-secondary">
+<div class="grain-overlay"></div>
+<!-- SideNavBar (Authority: JSON) -->
+<aside class="fixed left-0 top-0 h-full w-20 flex flex-col items-center py-6 border-r border-premium-border divide-y divide-premium-border bg-background z-50">
+<div class="pb-8 w-full flex justify-center">
+<div class="font-display-hero-mobile text-display-hero-mobile text-primary tracking-tighter" style="font-size: 24px;">MW</div>
+</div>
+<nav class="flex-1 w-full py-8 space-y-8 flex flex-col items-center">
+<!-- Workspace Active -->
+<button class="group flex flex-col items-center gap-1 text-secondary border-r-2 border-secondary bg-surface-container-highest/20 p-3 w-full transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="space_dashboard">space_dashboard</span>
+<span class="font-label-mono-allcaps text-label-mono-allcaps opacity-0 group-hover:opacity-100 transition-opacity">WORK</span>
+</button>
+<button class="group flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:text-primary hover:bg-surface-variant transition-colors duration-200 p-3 w-full">
+<span class="material-symbols-outlined" data-icon="schema">schema</span>
+</button>
+<button class="group flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:text-primary hover:bg-surface-variant transition-colors duration-200 p-3 w-full">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+</button>
+<button class="group flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:text-primary hover:bg-surface-variant transition-colors duration-200 p-3 w-full">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</button>
+<button class="group flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:text-primary hover:bg-surface-variant transition-colors duration-200 p-3 w-full">
+<span class="material-symbols-outlined" data-icon="settings_ethernet">settings_ethernet</span>
+</button>
+</nav>
+<div class="pt-8 w-full flex flex-col items-center space-y-6">
+<button class="text-on-surface-variant opacity-60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="vpn_key">vpn_key</span>
+</button>
+<button class="text-on-surface-variant opacity-60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar (Authority: JSON/User Specs) -->
+<header class="fixed top-0 right-0 left-20 h-14 z-40 bg-background/80 backdrop-blur-2xl border-b border-premium-border flex justify-between items-center px-gutter">
+<div class="flex items-center gap-4">
+<span class="font-label-mono-allcaps text-label-mono-allcaps font-bold text-primary">WORKSPACE / PLAYGROUND</span>
+<div class="h-4 w-px bg-premium-border"></div>
+<div class="relative group">
+<input class="bg-white/3 border border-premium-border rounded-lg px-4 py-1.5 w-[320px] font-label-mono-standard text-label-mono-standard focus:ring-1 focus:ring-secondary focus:border-secondary transition-all outline-none" placeholder="⌘K QUICK SEARCH" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex flex-col items-end">
+<span class="font-label-mono-allcaps text-label-mono-allcaps text-on-surface-variant">TOKEN USAGE</span>
+<span class="font-label-mono-standard text-label-mono-standard text-primary">142K / 500K</span>
+</div>
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:text-secondary transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-premium-border-high overflow-hidden">
+<img alt="User Profile" data-alt="A professional high-contrast portrait of a technical lead in a dimly lit, blue-toned studio. The subject wears a dark turtleneck, looking confidently at the camera, with soft rim lighting highlighting his profile. The background is a deep charcoal grey, emphasizing a premium and elite software engineering persona." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3hXuQq2k5fqYbPqgc_yzOVOKKGoIncFzN5NpNyLJK-DVf4Y5ZwJ-eBVYApbMJQ24g0mOZZKAU_H6Lz6BWXp5lzEu9ot4ryxY4BA3Jln-CGbN9VYXdYAXWQoxJNWXj6rhyd_pvuWw-EZbLic8ewu5c5zPDIpRSdtMdhOWq69kN53pOSvCkKiBoCgw9EOLl10NLFOgZdMrOTic86v3GP7b7Eg7lLxX2NPHmL4fndihKibgLpFx0WYSPxx7HcwgQP2Q0pK_4B-4dG5I"/>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="ml-20 mt-14 p-gutter min-h-[calc(100vh-3.5rem)] technical-grid relative flex flex-col gap-gutter">
+<!-- BYOK Overlay (Technical Info Panel) -->
+<div class="absolute bottom-6 right-6 z-30 p-4 bg-surface-container-lowest/80 backdrop-blur-xl border border-premium-border-high rounded-lg flex flex-col gap-2 shadow-2xl">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary status-pulse"></div>
+<span class="font-label-mono-allcaps text-label-mono-allcaps text-secondary">BYOK ACTIVE</span>
+</div>
+<p class="font-label-mono-standard text-label-mono-standard opacity-60">DIRECT PROVIDER ROUTING</p>
+<p class="font-label-mono-standard text-label-mono-standard opacity-60">REQUESTS NEVER STORED</p>
+<div class="pt-2 border-t border-premium-border flex justify-between">
+<span class="font-label-mono-standard text-label-mono-standard">EU-WEST LATENCY</span>
+<span class="font-label-mono-standard text-label-mono-standard text-secondary">42MS</span>
+</div>
+</div>
+<!-- Model Selection Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter perspective-container">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-premium-border rounded-xl p-6 flex flex-col gap-4 model-card-tilt hover:border-secondary/40 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-white flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-black" data-icon="api">api</span>
+</div>
+<div>
+<h3 class="font-label-mono-standard text-[16px] font-bold">GPT-4o</h3>
+<p class="font-label-mono-allcaps text-[10px] text-on-surface-variant">OPENAI / FRONTIER</p>
+</div>
+</div>
+<div class="px-2 py-1 bg-secondary/10 border border-secondary/20 rounded">
+<span class="font-label-mono-allcaps text-[10px] text-secondary">READY</span>
+</div>
+</div>
+<div class="mt-4 grid grid-cols-3 gap-2">
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">LATENCY</p>
+<p class="font-label-mono-standard text-label-mono-standard">84ms</p>
+</div>
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">CONTEXT</p>
+<p class="font-label-mono-standard text-label-mono-standard">128k</p>
+</div>
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">THROUGHPUT</p>
+<p class="font-label-mono-standard text-label-mono-standard">72 t/s</p>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-premium-border rounded-xl p-6 flex flex-col gap-4 model-card-tilt hover:border-secondary/40 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-container-high border border-premium-border flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<h3 class="font-label-mono-standard text-[16px] font-bold">CLAUDE 3.5 OPUS</h3>
+<p class="font-label-mono-allcaps text-[10px] text-on-surface-variant">ANTHROPIC / FRONTIER</p>
+</div>
+</div>
+<div class="px-2 py-1 bg-primary/10 border border-primary/20 rounded">
+<span class="font-label-mono-allcaps text-[10px] text-primary">WARMING</span>
+</div>
+</div>
+<div class="mt-4 grid grid-cols-3 gap-2">
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">LATENCY</p>
+<p class="font-label-mono-standard text-label-mono-standard">122ms</p>
+</div>
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">CONTEXT</p>
+<p class="font-label-mono-standard text-label-mono-standard">200k</p>
+</div>
+<div class="bg-surface-variant/30 p-2 rounded">
+<p class="font-label-mono-allcaps text-[8px] opacity-40">THROUGHPUT</p>
+<p class="font-label-mono-standard text-label-mono-standard">54 t/s</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Prompt Editor Workbench -->
+<section class="flex-1 flex flex-col bg-surface-container-lowest border border-premium-border rounded-3xl overflow-hidden shadow-2xl">
+<div class="h-12 border-b border-premium-border px-6 flex items-center justify-between bg-surface-container-high/40">
+<div class="flex items-center gap-4">
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-error/40 border border-error/50"></div>
+<div class="w-3 h-3 rounded-full bg-secondary/40 border border-secondary/50"></div>
+<div class="w-3 h-3 rounded-full bg-primary/40 border border-primary/50"></div>
+</div>
+<div class="h-4 w-px bg-premium-border"></div>
+<nav class="flex gap-4">
+<button class="font-label-mono-allcaps text-[10px] text-secondary">REASONING</button>
+<button class="font-label-mono-allcaps text-[10px] text-on-surface-variant hover:text-primary transition-colors">CODING</button>
+<button class="font-label-mono-allcaps text-[10px] text-on-surface-variant hover:text-primary transition-colors">BENCHMARK</button>
+</nav>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-mono-allcaps text-[10px] text-on-surface-variant">STREAMING: ON</span>
+<div class="w-2 h-2 rounded-full bg-secondary status-pulse"></div>
+</div>
+</div>
+<div class="flex-1 p-8 font-label-mono-standard relative">
+<div class="text-[14px] leading-relaxed text-on-surface-variant">
+<span class="text-syntax-keyword">const</span> <span class="text-secondary">analyzeSovereignty</span> = <span class="text-syntax-keyword">async</span> (node) =&gt; {<br/>
+                      <span class="text-syntax-comment">// Initialize decentralized orchestration layer</span><br/>
+                      <span class="text-syntax-keyword">let</span> lattice = <span class="text-syntax-keyword">new</span> LatticeStructure({ depth: <span class="text-secondary">42</span> });<br/>
+                      <span class="text-syntax-keyword">return</span> <span class="text-syntax-keyword">await</span> lattice.probe(node.identity);<br/>
+                    };<br/><br/>
+<span class="text-primary">Determine the optimal architectural path for a multi-agent system where latency is minimized but data sovereignty is absolute. Contrast centralized vs decentralized routing.</span><span class="blinking-cursor"></span>
+</div>
+</div>
+<div class="p-4 border-t border-premium-border flex justify-between items-center bg-surface-container-high/20">
+<div class="flex gap-2">
+<button class="px-4 py-2 border border-premium-border-high rounded-full font-label-mono-allcaps text-[10px] hover:bg-white/5 transition-all">SYSTEM CONFIG</button>
+<button class="px-4 py-2 border border-premium-border-high rounded-full font-label-mono-allcaps text-[10px] hover:bg-white/5 transition-all">EXPORT DATA</button>
+</div>
+<button class="bg-primary text-on-primary px-8 py-2.5 rounded-full font-label-mono-standard font-bold hover:bg-secondary transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]">RUN COMPARISON</button>
+</div>
+</section>
+<!-- Comparison Result Panels -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter mb-12">
+<div class="bg-surface-container-lowest border border-premium-border rounded-3xl p-6 flex flex-col gap-4">
+<div class="flex justify-between items-center border-b border-premium-border pb-4">
+<span class="font-label-mono-allcaps text-[10px] tracking-widest text-on-surface-variant">GPT-4O OUTPUT</span>
+<span class="material-symbols-outlined text-secondary" data-icon="check_circle">check_circle</span>
+</div>
+<div class="text-[13px] leading-relaxed opacity-80 space-y-4">
+<p>For absolute sovereignty, a <span class="bg-secondary/20 text-secondary px-1">Decentralized Routing</span> architecture is preferred. By utilizing edge nodes with local encryption keys, data never leaves the sovereign jurisdiction.</p>
+<div class="p-3 bg-surface-variant/20 rounded-lg border border-premium-border font-label-mono-standard text-[11px]">
+                        Path: Local-Edge -&gt; TLS 1.3 -&gt; Sharded Storage
+                    </div>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-premium-border rounded-3xl p-6 flex flex-col gap-4">
+<div class="flex justify-between items-center border-b border-premium-border pb-4">
+<span class="font-label-mono-allcaps text-[10px] tracking-widest text-on-surface-variant">CLAUDE 3.5 OUTPUT</span>
+<span class="material-symbols-outlined text-on-surface-variant opacity-40" data-icon="pending">pending</span>
+</div>
+<div class="text-[13px] leading-relaxed opacity-80 space-y-4">
+<p>Centralized systems offer lower latency through colocation, but violate strict sovereignty requirements. I recommend a <span class="bg-secondary/20 text-secondary px-1">Hybrid Sovereign Mesh</span>.</p>
+<div class="p-3 bg-surface-variant/20 rounded-lg border border-premium-border font-label-mono-standard text-[11px]">
+                        Path: Zero-Knowledge Tunnel -&gt; Region Lock -&gt; Sovereign HSM
+                    </div>
+</div>
+</div>
+</section>
+<!-- Footer Metadata Bar -->
+<footer class="fixed bottom-0 right-0 left-20 h-10 bg-background border-t border-premium-border px-6 flex items-center justify-between z-40">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="font-label-mono-allcaps text-[9px] text-on-surface-variant">TOTAL TOKENS:</span>
+<span class="font-label-mono-standard text-[10px]">1,204,592</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-mono-allcaps text-[9px] text-on-surface-variant">RUNTIME:</span>
+<span class="font-label-mono-standard text-[10px]">1.2s</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-mono-allcaps text-[9px] text-on-surface-variant">REGION:</span>
+<span class="font-label-mono-standard text-[10px]">AWS-EU-WEST-1</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-mono-standard text-[10px] text-secondary">FRONTIER V2.4.0-STABLE</span>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary"></div>
+</div>
+</footer>
+</main>
+<script>
+        // Micro-interactions and effects
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.createElement('div');
+            glow.className = 'fixed pointer-events-none rounded-full w-96 h-96 blur-[120px] bg-secondary/5 z-0';
+            glow.style.left = (e.clientX - 192) + 'px';
+            glow.style.top = (e.clientY - 192) + 'px';
+            
+            const existingGlow = document.querySelector('.cursor-glow');
+            if (existingGlow) existingGlow.remove();
+            
+            glow.classList.add('cursor-glow');
+            document.body.appendChild(glow);
+        });
+
+        // Simulating some model card movement
+        const cards = document.querySelectorAll('.model-card-tilt');
+        cards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 20;
+                const rotateY = (centerX - x) / 20;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(2deg) rotateY(-1deg) scale(1)`;
+            });
+        });
+    </script>
+</body></html>

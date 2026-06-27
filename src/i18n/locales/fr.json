@@ -1,0 +1,133 @@
+{
+  "language": {
+    "label": "Langue",
+    "en": "English",
+    "fr": "Français",
+    "ar": "العربية"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "playground": "Terrain de jeu",
+    "sessions": "Sessions",
+    "benchmarks": "Benchmarks",
+    "providers": "Fournisseurs",
+    "settings": "Paramètres",
+    "workspace": "Espace de travail",
+    "newWorkspace": "Nouvel espace",
+    "docs": "Documentation",
+    "support": "Support",
+    "compare": "Comparer",
+    "quickstart": "Démarrage rapide",
+    "github": "GitHub",
+    "signIn": "Connexion",
+    "getStarted": "Commencer",
+    "byokActive": "BYOK ACTIF",
+    "openNav": "Ouvrir la navigation"
+  },
+  "footer": {
+    "tagline": "Orchestration IA haute performance pour l'ère des modèles de pointe. Optimisé pour les équipes techniques et les chercheurs.",
+    "app": "Application",
+    "project": "Projet",
+    "selfHosting": "Auto-hébergement",
+    "rights": "Tous droits réservés."
+  },
+  "settings": {
+    "controlCenter": "Centre de contrôle",
+    "subtitle": "Infrastructure et gestion d'authentification",
+    "providersConnected": "{{count}} fournisseur connecté",
+    "providersConnected_plural": "{{count}} fournisseurs connectés",
+    "ready": "PRÊT",
+    "keysRequired": "CLÉS REQUISES",
+    "sections": {
+      "profiles": { "label": "Profils", "description": "Profils de clés" },
+      "providers": { "label": "Fournisseurs", "description": "Vue d'ensemble des connexions" },
+      "api-keys": { "label": "Clés API", "description": "Identifiants et routage" },
+      "storage": { "label": "Stockage", "description": "Export et coffre local" },
+      "cloud": { "label": "Cloud", "description": "Synchronisation optionnelle" },
+      "sessions": { "label": "Sessions", "description": "Données de benchmark" },
+      "cost": { "label": "Coût", "description": "Estimations d'utilisation" },
+      "security": { "label": "Sécurité", "description": "Confidentialité et isolation" }
+    }
+  },
+  "playground": {
+    "promptWorkspace": "Espace de prompt",
+    "charTokens": "{{chars}}/4000 · ~{{tokens}} jetons",
+    "clearPrompt": "Effacer le prompt",
+    "cancel": "Annuler",
+    "runComparison": "Lancer la comparaison",
+    "streaming": "Diffusion…",
+    "shortcut": "⌘/Ctrl+Entrée pour lancer",
+    "placeholder": "Saisissez un prompt d'évaluation…",
+    "modelEval": "Évaluation de modèles",
+    "dualCompare": "Comparaison double",
+    "securityKeysLocal": "Clés locales uniquement · jamais synchronisées",
+    "securityUntrustedOutput": "Les sorties sont du contenu de modèle non fiable",
+    "presets": {
+      "reasoning": "Raisonnement",
+      "benchmark": "Benchmark",
+      "structured": "Structuré"
+    },
+    "status": {
+      "idle": "Inactif",
+      "complete": "Terminé",
+      "connecting": "Connexion",
+      "connectingProvider": "Connexion au fournisseur…",
+      "streaming": "Diffusion",
+      "searching": "Recherche web",
+      "grounding": "Ancrage",
+      "failed": "Échec",
+      "cancelled": "Annulé",
+      "awaitingRun": "En attente d'une comparaison",
+      "awaitingToken": "En attente du premier jeton",
+      "unavailable": "Réponse indisponible",
+      "liveStream": "Flux en direct",
+      "evaluationComplete": "Évaluation terminée",
+      "inProgress": "En cours",
+      "ready": "Prêt"
+    }
+  },
+  "compare": {
+    "cannotCompare": "Impossible de comparer",
+    "blocking": {
+      "inProgress": "Comparaison en cours",
+      "enterPrompt": "Saisissez un prompt à comparer",
+      "selectModelA": "Sélectionnez un modèle pour le côté A",
+      "selectModelB": "Sélectionnez un modèle pour le côté B",
+      "addKeys": "Ajoutez des clés API pour au moins un modèle dans Paramètres"
+    },
+    "warnings": {
+      "searchDiffers": "Les capacités de recherche diffèrent entre les modèles — la comparaison continue ; l'écart peut refléter le support de la route, pas la qualité du modèle.",
+      "noSearch": "Aucune route ne prend en charge la recherche native — résultats sans ancrage web.",
+      "forceSearchA": "Le modèle A ne prend pas en charge la recherche forcée sur cette route.",
+      "forceSearchB": "Le modèle B ne prend pas en charge la recherche forcée sur cette route.",
+      "noKeyA": "Le modèle A n'a pas de route de clé API — ce côté sera ignoré.",
+      "noKeyB": "Le modèle B n'a pas de route de clé API — ce côté sera ignoré."
+    }
+  },
+  "auth": {
+    "localMode": "MODE LOCAL",
+    "localModeLabel": "Mode local",
+    "signInToSync": "Connexion pour synchroniser",
+    "optionalSync": "Synchronisation cloud optionnelle — aucun compte requis pour comparer.",
+    "optionalCloudSync": "Synchronisation cloud optionnelle",
+    "signInToSyncLink": "Connexion pour synchroniser →",
+    "continueLocally": "Continuer en local",
+    "syncOptional": "Synchronisation cloud optionnelle pour un banc d'évaluation local d'abord.",
+    "heroTitle": "Synchroniser ou",
+    "heroTitleAccent": "rester local.",
+    "heroSubtitle": "ModelWise est un banc d'évaluation local d'abord. L'identité cloud est une couche de synchronisation optionnelle — la comparaison fonctionne de la même façon."
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Route introuvable",
+    "landing": "Accueil",
+    "playground": "Terrain de jeu"
+  },
+  "account": {
+    "syncing": "SYNC…",
+    "syncErr": "ERREUR SYNC",
+    "offline": "HORS LIGNE",
+    "syncOk": "SYNC OK",
+    "local": "LOCAL"
+  }
+}
