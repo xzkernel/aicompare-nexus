@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from typing import Any, AsyncIterator, Dict, List, Optional
 
@@ -13,7 +14,7 @@ from .stream_events import ProviderStreamEvent
 
 logger = logging.getLogger(__name__)
 
-OPENROUTER_APP_URL = "http://localhost:8080"
+OPENROUTER_APP_URL = os.getenv("APP_URL", "https://aicompare-nexus.vercel.app")
 OPENROUTER_APP_TITLE = "ModelWise"
 
 

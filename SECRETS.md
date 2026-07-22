@@ -24,11 +24,11 @@ cp backend/env.example .env
 ```env
 # OpenAI Configuration
 OPENAI_API_KEY=sk-your-actual-openai-key-here
-OPENAI_MODEL=gpt-5
+OPENAI_MODEL=gpt-4o-mini
 
 # Google Gemini Configuration
 GOOGLE_API_KEY=your-actual-google-key-here
-GOOGLE_MODEL=gemini-2.0-flash-exp
+GOOGLE_MODEL=gemini-2.5-flash
 
 # Rate Limiting Configuration
 RATE_LIMIT_PER_MINUTE=60
@@ -197,8 +197,8 @@ fly deploy
 |----------|----------|---------|-------------|
 | `OPENAI_API_KEY` | ✅ | - | OpenAI API key for GPT models |
 | `GOOGLE_API_KEY` | ✅ | - | Google API key for Gemini models |
-| `OPENAI_MODEL` | ❌ | `gpt-5` | OpenAI model to use |
-| `GOOGLE_MODEL` | ❌ | `gemini-2.0-flash-exp` | Google model to use |
+| `OPENAI_MODEL` | ❌ | `gpt-4o-mini` | OpenAI model to use |
+| `GOOGLE_MODEL` | ❌ | `gemini-2.5-flash` | Google model to use |
 | `RATE_LIMIT_PER_MINUTE` | ❌ | `60` | Requests per minute per IP |
 | `RATE_LIMIT_PER_HOUR` | ❌ | `1000` | Requests per hour per IP |
 | `PROD_ORIGINS` | ❌ | - | Comma-separated CORS origins |
@@ -213,7 +213,7 @@ curl https://your-backend.com/health
 # Test API endpoint (with rate limiting)
 curl -X POST https://your-backend.com/ask \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"test","leftModel":"gpt-5","rightModel":"gemini-2.0-flash-exp"}'
+  -d '{"prompt":"test","leftModel":"gpt-4o-mini","rightModel":"gemini-2.5-flash"}'
 ```
 
 ### Verify Environment Variables
