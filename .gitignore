@@ -91,6 +91,7 @@ dist/
 *.tgz
 *.tar.gz
 vite.config.ts.timestamp-*.mjs
+bun.lockb
 
 # Generated / scratch tooling (never commit)
 testsprite_tests/
