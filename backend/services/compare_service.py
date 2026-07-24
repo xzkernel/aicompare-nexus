@@ -88,11 +88,20 @@ async def run_ask_comparison(body: AskRequest, keys: ByokHeaders) -> AskResponse
 
     right_task = _run_provider(right_name, right_key, right_model, body.prompt, right_extras, search)
 
+    (left_response, left_time), (right_response, right_time) = await asyncio.wait_for(
 
 
-    (left_response, left_time), (right_response, right_time) = await asyncio.gather(
+        asyncio.gather(
+
 
         left_task, right_task
+
+
+    ),
+
+
+        timeout=180
+
 
     )
 

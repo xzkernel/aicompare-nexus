@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { config } from "@/config/app";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ByokInfrastructurePanel } from "@/components/shell/ByokInfrastructurePanel";
 import { RegistryBootstrap } from "@/components/RegistryBootstrap";
@@ -39,7 +40,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               ModelWise
             </h1>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-white/40">
-              V1.0.4 Frontier
+              V{config.APP_VERSION} Frontier
             </p>
           </div>
         </div>
@@ -158,15 +159,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {t("nav.workspace")}
             </Link>
             <Link
-              to="/dashboard"
+              to="/playground"
               className={cn(
                 "font-mono text-xs transition-colors",
-                location.pathname === "/dashboard"
+                location.pathname === "/playground"
                   ? "font-bold text-white"
                   : "text-white/50 hover:text-white"
               )}
             >
-              {t("nav.dashboard")}
+              {t("nav.playground")}
             </Link>
           </nav>
         </div>

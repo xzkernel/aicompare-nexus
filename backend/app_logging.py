@@ -7,6 +7,8 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 import sys
 
+from security import redact_sensitive_data
+
 # Configure structured logging
 class StructuredFormatter(logging.Formatter):
     """Custom formatter that outputs structured JSON logs"""
@@ -22,7 +24,7 @@ class StructuredFormatter(logging.Formatter):
             "timestamp": time.time(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redact_sensitive_data(record.getMessage()),
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
@@ -33,8 +35,8 @@ class StructuredFormatter(logging.Formatter):
         if record.exc_info:
             log_entry["exception"] = {
                 "type": record.exc_info[0].__name__ if record.exc_info[0] else None,
-                "message": str(record.exc_info[1]) if record.exc_info[1] else None,
-                "traceback": self.formatException(record.exc_info)
+                "message": redact_sensitive_data(str(record.exc_info[1])) if record.exc_info[1] else None,
+                "traceback": redact_sensitive_data(self.formatException(record.exc_info))
             }
         
         return json.dumps(log_entry)
@@ -134,8 +136,8 @@ class RequestLoggingMiddleware:
             logger = logging.getLogger("request")
             logger.error("Request failed", extra={
                 "request_id": request_id,
-                # Log type only, not message — str(e) may contain API key fragments
                 "error_type": type(e).__name__,
+                "error_message": redact_sensitive_data(str(e)),
             })
             raise
         finally:

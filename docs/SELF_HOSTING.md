@@ -60,10 +60,10 @@ npm install && npm run dev
 ## HTTPS (production)
 
 1. Obtain TLS certificates (Let's Encrypt recommended).
-2. Use [nginx.ssl.example.conf](../nginx.ssl.example.conf) as a starting point.
-3. Mount certs into the frontend container or terminate TLS at an external load balancer.
+2. Extend `nginx.conf` with a TLS server block, or terminate TLS at an external load balancer.
+3. Mount certs into the frontend container or proxy to the Docker Compose services.
 4. Set `CORS_ORIGINS=https://your-domain.com`.
-5. HSTS is enabled in the SSL example config.
+5. Enable HSTS only after confirming HTTPS works end-to-end.
 
 If TLS terminates at a load balancer, ensure it forwards:
 - `X-Forwarded-For` (real client IP)

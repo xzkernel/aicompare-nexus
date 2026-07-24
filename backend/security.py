@@ -118,10 +118,10 @@ def sanitize_input(text: str) -> str:
     if not text:
         return ""
     
-    # Remove or escape potentially dangerous characters
+    # Replace & first to avoid double-encoding already-escaped entities
+    text = text.replace("&", "&amp;")
     text = text.replace("<", "&lt;").replace(">", "&gt;")
     text = text.replace('"', "&quot;").replace("'", "&#x27;")
-    text = text.replace("&", "&amp;")
     
     # Remove null bytes
     text = text.replace("\x00", "")
@@ -151,9 +151,9 @@ def redact_sensitive_data(text: str) -> str:
     if not text:
         return text
     
-    # Redact API keys
-    text = re.sub(r'sk-[a-zA-Z0-9]{20,}', 'sk-***REDACTED***', text)
-    text = re.sub(r'AIza[a-zA-Z0-9]{20,}', 'AIza***REDACTED***', text)
+    # Redact API keys (handles hyphenated formats: sk-proj-..., sk-or-v1-..., sk-ant-api03-...)
+    text = re.sub(r'sk-[a-zA-Z0-9\-_]{20,}', 'sk-***REDACTED***', text)
+    text = re.sub(r'AIza[a-zA-Z0-9\-_]{20,}', 'AIza***REDACTED***', text)
     
     # Redact other sensitive patterns
     text = re.sub(r'Bearer\s+[a-zA-Z0-9\-_]+', 'Bearer ***REDACTED***', text)

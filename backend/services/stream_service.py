@@ -466,40 +466,41 @@ async def stream_comparison_sse(body: StreamRequest, keys: ByokHeaders) -> Async
 
     task = asyncio.create_task(producer())
 
-
-
     try:
-
         while True:
-
             item = await queue.get()
-
             if item is None:
-
                 break
-
             yield item
-
+    except asyncio.CancelledError:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        yield _sse("error", {"detail": "Stream cancelled"})
+        return
     finally:
-
-        await task
+        if not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        else:
+            try:
+                await task
+            except Exception:
+                pass
 
         yield _sse(
-
             "complete",
-
             {
-
                 "prompt": body.prompt,
-
                 "leftModel": body.leftModel,
-
                 "rightModel": body.rightModel,
-
                 "searchMode": body.searchMode.value if body.searchMode else None,
-
             },
-
         )
 
 

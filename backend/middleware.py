@@ -27,19 +27,22 @@ class RateLimiter:
         self.minute_requests: Dict[str, list] = defaultdict(list)
         self.hour_requests: Dict[str, list] = defaultdict(list)
         self.lock = asyncio.Lock()
+        self._last_gc = time.time()
     
     async def is_allowed(self, client_ip: str) -> Tuple[bool, Dict[str, int]]:
         """Check if request is allowed and return remaining limits"""
         async with self.lock:
             current_time = time.time()
             
-            # Clean old entries
+            # Clean old entries for current IP
             self._cleanup_old_requests(client_ip, current_time)
+            
+            # Periodic GC: remove stale IPs with no remaining timestamps
+            self._sweep_idle_ips(current_time)
             
             # Check minute limit
             minute_count = len(self.minute_requests[client_ip])
             if minute_count >= self.requests_per_minute:
-                # Log rate limit exceeded
                 logger.warning(f"Rate limit exceeded for {client_ip}: {minute_count}/{self.requests_per_minute} per minute")
                 return False, {
                     "minute_remaining": 0,
@@ -49,7 +52,6 @@ class RateLimiter:
             # Check hour limit
             hour_count = len(self.hour_requests[client_ip])
             if hour_count >= self.requests_per_hour:
-                # Log rate limit exceeded
                 logger.warning(f"Rate limit exceeded for {client_ip}: {hour_count}/{self.requests_per_hour} per hour")
                 return False, {
                     "minute_remaining": max(0, self.requests_per_minute - minute_count),
@@ -60,7 +62,6 @@ class RateLimiter:
             self.minute_requests[client_ip].append(current_time)
             self.hour_requests[client_ip].append(current_time)
             
-            # Log successful rate limit check
             logger.debug(f"Rate limit check passed for {client_ip}: {minute_count + 1}/{self.requests_per_minute} per minute")
             
             return True, {
@@ -70,17 +71,24 @@ class RateLimiter:
     
     def _cleanup_old_requests(self, client_ip: str, current_time: float):
         """Remove old request timestamps"""
-        # Remove requests older than 1 minute
         self.minute_requests[client_ip] = [
             req_time for req_time in self.minute_requests[client_ip]
             if current_time - req_time < 60
         ]
-        
-        # Remove requests older than 1 hour
         self.hour_requests[client_ip] = [
             req_time for req_time in self.hour_requests[client_ip]
             if current_time - req_time < 3600
         ]
+    
+    def _sweep_idle_ips(self, current_time: float):
+        """Periodically remove IPs with no remaining requests to prevent unbounded memory growth."""
+        if current_time - self._last_gc < 60:
+            return
+        self._last_gc = current_time
+        for d in (self.minute_requests, self.hour_requests):
+            stale = [ip for ip, times in d.items() if not times]
+            for ip in stale:
+                del d[ip]
 
 # Global rate limiter instance
 rate_limiter = RateLimiter(
@@ -116,7 +124,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         "X-RateLimit-Limit-Minute": str(rate_limiter.requests_per_minute),
                         "X-RateLimit-Limit-Hour": str(rate_limiter.requests_per_hour),
                         "X-RateLimit-Remaining-Minute": str(limits["minute_remaining"]),
-                        "X-RateLimit-Remaining-Hour": str(limits["hour_remaining"])
+                        "X-RateLimit-Remaining-Hour": str(limits["hour_remaining"]),
+                        "X-Content-Type-Options": "nosniff",
+                        "X-Frame-Options": "DENY",
+                        "Referrer-Policy": "strict-origin-when-cross-origin",
                     }
                 )
             

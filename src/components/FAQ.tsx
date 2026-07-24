@@ -17,7 +17,7 @@ const FAQS = [
   },
   {
     q: "Can I host this on-premise?",
-    a: "Yes. Deploy ModelWise as a Docker container within your secure infrastructure for total data sovereignty. Run `modelwise up --self-host` to get started.",
+    a: "Yes. Deploy ModelWise as a Docker container within your secure infrastructure for total data sovereignty. Run `docker compose -f docker-compose.prod.yml up -d --build` to get started. See docs/SELF_HOSTING.md for details.",
   },
   {
     q: "Which models are supported?",

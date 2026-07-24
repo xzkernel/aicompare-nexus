@@ -8,23 +8,23 @@
 const PROVIDER_ROWS = [
   {
     name: "OpenAI",
-    models: "GPT-4o, GPT-5, o1-preview",
+    models: "GPT-4o, GPT-4o Mini, o1, o3-mini",
     routing: "DIRECT_REST_API",
   },
   {
     name: "Anthropic",
-    models: "Claude 3.5 Sonnet, Claude 3 Opus",
-    routing: "WEBSOCKET_STREAM",
-  },
-  {
-    name: "Google",
-    models: "Gemini 1.5 Pro, Gemini 1.5 Flash",
+    models: "Claude Sonnet 4, Claude Opus 4",
     routing: "DIRECT_REST_API",
   },
   {
-    name: "Meta / Llama",
-    models: "Llama 3.1 8B, 70B, 405B",
-    routing: "LOCAL_OLLAMA_PROXY",
+    name: "Google",
+    models: "Gemini 2.5 Pro, Gemini 2.5 Flash",
+    routing: "DIRECT_REST_API",
+  },
+  {
+    name: "OpenRouter / Relay",
+    models: "DeepSeek, Llama 4, Qwen 3, Gemma 3",
+    routing: "OPENAI_COMPATIBLE_RELAY",
   },
 ];
 

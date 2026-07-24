@@ -464,9 +464,8 @@ export function useSecureApiKeys(profileId: string = 'default') {
   // Redact keys from error messages
   const redactKeys = useCallback((message: string): string => {
     return message
-      .replace(/sk-[a-zA-Z0-9]{20,}/g, 'sk-***REDACTED***')
-      .replace(/AIza[a-zA-Z0-9]{20,}/g, 'AIza***REDACTED***')
-      .replace(/sk-ant-[a-zA-Z0-9]{20,}/g, 'sk-ant-***REDACTED***');
+      .replace(/sk-(?:proj-|svcacct-|admin-|ant-api\d{2}-|or-v\d+-)?[a-zA-Z0-9\-_]{20,}/g, 'sk-***REDACTED***')
+      .replace(/AIza[a-zA-Z0-9\-_]{20,}/g, 'AIza***REDACTED***');
   }, []);
 
   return {

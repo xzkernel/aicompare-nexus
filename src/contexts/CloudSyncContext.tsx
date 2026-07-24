@@ -90,6 +90,8 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void getAppMetadata().then((m) => {
       setLastSyncAt(m.lastPullAt ?? m.lastPushAt);
+    }).catch((err) => {
+      console.error('Failed to load sync metadata:', err);
     });
   }, [status]);
 
