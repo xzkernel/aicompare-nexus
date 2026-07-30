@@ -13,8 +13,9 @@ export interface AppConfig {
   // Feature flags
   ENABLE_ANALYTICS: boolean;
   ENABLE_EXPORT: boolean;
-  ENABLE_COST_ESTIMATION: boolean;
 }
+
+type RuntimeEnv = Partial<Record<keyof AppConfig, string>>;
 
 // Default configuration
 const defaultConfig: AppConfig = {
@@ -23,7 +24,6 @@ const defaultConfig: AppConfig = {
   APP_VERSION: '1.0.0',
   ENABLE_ANALYTICS: false,
   ENABLE_EXPORT: true,
-  ENABLE_COST_ESTIMATION: true,
 };
 
 // Environment-based configuration
@@ -34,17 +34,15 @@ const getConfig = (): AppConfig => {
   // Override with environment variables if available
   if (typeof window !== 'undefined') {
     // Browser environment
-    const env = (window as any).__ENV__ || {};
+    const env = (window as Window & { __ENV__?: RuntimeEnv }).__ENV__ || {};
     envConfig.OPEN_SOURCE_BYOK = env.OPEN_SOURCE_BYOK !== 'false';
     envConfig.ENABLE_ANALYTICS = env.ENABLE_ANALYTICS === 'true';
     envConfig.ENABLE_EXPORT = env.ENABLE_EXPORT !== 'false';
-    envConfig.ENABLE_COST_ESTIMATION = env.ENABLE_COST_ESTIMATION !== 'false';
   } else {
     // Server-side or build-time
     envConfig.OPEN_SOURCE_BYOK = process.env.VITE_OPEN_SOURCE_BYOK !== 'false';
     envConfig.ENABLE_ANALYTICS = process.env.VITE_ENABLE_ANALYTICS === 'true';
     envConfig.ENABLE_EXPORT = process.env.VITE_ENABLE_EXPORT !== 'false';
-    envConfig.ENABLE_COST_ESTIMATION = process.env.VITE_ENABLE_COST_ESTIMATION !== 'false';
   }
   
   return {
@@ -59,6 +57,5 @@ export const config = getConfig();
 export const isBYOKMode = (): boolean => config.OPEN_SOURCE_BYOK;
 export const isAnalyticsEnabled = (): boolean => config.ENABLE_ANALYTICS;
 export const isExportEnabled = (): boolean => config.ENABLE_EXPORT;
-export const isCostEstimationEnabled = (): boolean => config.ENABLE_COST_ESTIMATION;
 
 

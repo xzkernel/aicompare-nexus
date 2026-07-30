@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from schemas.stream import StreamRequest
 from services.stream_service import stream_comparison_sse
 from utils.byok import parse_byok_headers
+from utils.model_resolver import resolve_side
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ async def stream_compare(
     x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     x_google_api_key: Optional[str] = Header(default=None, alias="X-Google-API-Key"),
     x_anthropic_api_key: Optional[str] = Header(default=None, alias="X-Anthropic-API-Key"),
+    x_opencode_api_key: Optional[str] = Header(default=None, alias="X-OpenCode-API-Key"),
     x_meta_api_key: Optional[str] = Header(default=None, alias="X-Meta-API-Key"),
     x_custom_api_key: Optional[str] = Header(default=None, alias="X-Custom-API-Key"),
     x_meta_base_url: Optional[str] = Header(default=None, alias="X-Meta-Base-Url"),
@@ -37,6 +39,7 @@ async def stream_compare(
         x_openai_api_key=x_openai_api_key,
         x_google_api_key=x_google_api_key,
         x_anthropic_api_key=x_anthropic_api_key,
+        x_opencode_api_key=x_opencode_api_key,
         x_meta_api_key=x_meta_api_key,
         x_custom_api_key=x_custom_api_key,
         x_meta_base_url=x_meta_base_url,
@@ -45,10 +48,13 @@ async def stream_compare(
         x_custom_key_header=x_custom_key_header,
     )
 
-    if not any([keys.openai, keys.google, keys.anthropic, keys.meta, keys.custom]):
+    if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
 
     try:
+        # Validate both routes before StreamingResponse starts consuming the generator.
+        resolve_side(body.leftModel, body.leftProvider, keys)
+        resolve_side(body.rightModel, body.rightProvider, keys)
         return StreamingResponse(
             stream_comparison_sse(body, keys),
             media_type="text/event-stream",

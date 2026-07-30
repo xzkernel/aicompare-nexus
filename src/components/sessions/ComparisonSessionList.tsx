@@ -8,6 +8,13 @@ function formatModel(model: string) {
   return getModelDisplayName(model);
 }
 
+function formatVerdict(verdict: "left" | "tie" | "right" | undefined) {
+  if (verdict === "left") return "Verdict: Model A";
+  if (verdict === "right") return "Verdict: Model B";
+  if (verdict === "tie") return "Verdict: Tie";
+  return null;
+}
+
 type Props = {
   compact?: boolean;
   limit?: number;
@@ -54,6 +61,7 @@ export function ComparisonSessionList({ compact, limit = 12 }: Props) {
               </p>
               <p className="font-mono text-[10px] text-text-muted">
                 {new Date(s.timestamp).toLocaleString()}
+                {formatVerdict(s.verdict) ? ` · ${formatVerdict(s.verdict)}` : ""}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">

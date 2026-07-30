@@ -2,26 +2,23 @@ import { AlertCircle, CheckCircle, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ApiKeyHealthCheck } from "@/components/ApiKeyHealthCheck";
 import { SettingsPanel, SettingsKeyField, RoutingToggle } from "./SettingsLayout";
 import type { SettingsHandlersProps } from "./settings-props";
 
 export function SettingsApiKeysSection(props: SettingsHandlersProps) {
   const {
-    profileId,
     apiKeys,
     showKeys,
     toggleKeyVisibility,
     handleKeyChange,
     handleMetaRelayChange,
     handleCustomConfigChange,
-    handleSave,
     handleClear,
-    isLoading,
     hasValidKeys,
     openaiValid,
     googleValid,
     anthropicValid,
+    opencodeValid,
     metaValid,
     customValid,
     setApiKeys,
@@ -33,19 +30,19 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         <Alert className="border-stroke-subtle bg-bg-soft/50">
           <CheckCircle className="h-4 w-4 text-accent-green" />
           <AlertDescription className="font-mono text-[11px]">
-            At least one valid key configured — playground routing is active.
+            At least one route is configured for playground requests.
           </AlertDescription>
         </Alert>
       ) : (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-mono text-[11px]">
-            No valid API keys. Add credentials below to enable model evaluation.
+            No API key route is configured. Add credentials below to enable model evaluation.
           </AlertDescription>
         </Alert>
       )}
 
-      <SettingsPanel title="OpenAI" description="GPT family · direct API" icon={Key} status={{ label: openaiValid ? "connected" : "offline", ok: openaiValid }}>
+      <SettingsPanel title="OpenAI" description="GPT family · routed through ModelWise backend" icon={Key} status={{ label: openaiValid ? "configured" : "missing", ok: openaiValid }}>
         <SettingsKeyField
           id="openai-key"
           label="API key"
@@ -56,11 +53,11 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
           onChange={(v) => handleKeyChange("openaiKey", v)}
           valid={openaiValid}
           helpUrl="https://platform.openai.com/api-keys"
-          hint='Prefix "sk-" · client-side only'
+          hint='Prefix "sk-" · held in memory and sent through the configured backend per request'
         />
       </SettingsPanel>
 
-      <SettingsPanel title="Google Gemini" description="Gemini models" icon={Key} status={{ label: googleValid ? "connected" : "offline", ok: googleValid }}>
+      <SettingsPanel title="Google Gemini" description="Gemini models" icon={Key} status={{ label: googleValid ? "configured" : "missing", ok: googleValid }}>
         <div className="space-y-3">
           <SettingsKeyField
             id="google-key"
@@ -85,7 +82,7 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Anthropic Claude" description="Claude models" icon={Key} status={{ label: anthropicValid ? "connected" : "offline", ok: anthropicValid }}>
+      <SettingsPanel title="Anthropic Claude" description="Claude models" icon={Key} status={{ label: anthropicValid ? "configured" : "missing", ok: anthropicValid }}>
         <div className="space-y-3">
           <RoutingToggle
             label="Routing mode"
@@ -117,7 +114,35 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Meta / OpenRouter" description="Llama & relay models" icon={Key} status={{ label: metaValid ? "connected" : "offline", ok: metaValid }}>
+      <SettingsPanel title="OpenCode" description="Go subscription + Zen pay-as-you-go" icon={Key} status={{ label: opencodeValid ? "2 routes configured" : "missing", ok: opencodeValid }}>
+        <div className="space-y-3">
+          <p className="font-mono text-[10px] leading-relaxed text-text-muted">
+            One OpenCode workspace API key enables both OpenCode Go subscription models and OpenCode Zen pay-as-you-go models.
+          </p>
+          <div className="flex gap-3 font-mono text-[10px]">
+            <a className="text-accent-cyan hover:underline" href="https://opencode.ai/docs/go/" target="_blank" rel="noreferrer">
+              Go docs
+            </a>
+            <a className="text-accent-cyan hover:underline" href="https://opencode.ai/docs/zen/" target="_blank" rel="noreferrer">
+              Zen docs
+            </a>
+          </div>
+          <SettingsKeyField
+            id="opencode-key"
+            label="Workspace API key"
+            value={apiKeys.opencodeKey}
+            placeholder="OpenCode workspace key"
+            visible={showKeys.opencodeKey}
+            onToggleVisible={() => toggleKeyVisibility("opencodeKey")}
+            onChange={(v) => handleKeyChange("opencodeKey", v)}
+            valid={opencodeValid}
+            helpUrl="https://opencode.ai/auth"
+            hint="Shared by Go and Zen · held in memory by default"
+          />
+        </div>
+      </SettingsPanel>
+
+      <SettingsPanel title="Meta / OpenRouter" description="Llama & relay models" icon={Key} status={{ label: metaValid ? "configured" : "missing", ok: metaValid }}>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <span className="mw-label-mono text-text-muted">Relay service</span>
@@ -145,25 +170,23 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Custom HTTP" description="OpenAI-compatible endpoint" icon={Key} status={{ label: customValid ? "connected" : "offline", ok: customValid }}>
+      <SettingsPanel title="Custom HTTP" description="OpenAI-compatible HTTPS endpoint" icon={Key} status={{ label: customValid ? "configured" : "missing", ok: customValid }}>
         <div className="space-y-3">
           <SettingsKeyField
             id="custom-base-url"
             label="Base URL"
             value={apiKeys.customApiConfig?.baseUrl || ""}
             placeholder="https://api.example.com"
-            visible
-            onToggleVisible={() => {}}
             onChange={(v) => handleCustomConfigChange("baseUrl", v)}
+            hideable={false}
           />
           <SettingsKeyField
             id="custom-key-header"
             label="Key header"
             value={apiKeys.customApiConfig?.keyHeader || "Authorization"}
             placeholder="Authorization"
-            visible
-            onToggleVisible={() => {}}
             onChange={(v) => handleCustomConfigChange("keyHeader", v)}
+            hideable={false}
           />
           <SettingsKeyField
             id="custom-key"
@@ -186,17 +209,13 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         </AlertDescription>
       </Alert>
 
-      <div className="flex flex-wrap gap-2 border border-stroke-subtle bg-bg-soft/30 p-3">
-        <Button size="sm" onClick={handleSave} disabled={isLoading} className="font-mono text-[11px]">
-          {isLoading ? "Saving…" : "Save keys to browser"}
-        </Button>
+      <div className="border border-stroke-subtle bg-bg-soft/30 p-3">
+        <p className="mb-2 font-mono text-[10px] text-text-muted">
+          Changes apply immediately in memory. Clearing active keys does not delete a separately saved encrypted vault.
+        </p>
         <Button size="sm" variant="outline" onClick={handleClear} className="font-mono text-[11px]">
-          Clear all keys
+          Clear Active Keys
         </Button>
-      </div>
-
-      <div className="border border-stroke-subtle p-3">
-        <ApiKeyHealthCheck profileId={profileId} />
       </div>
     </div>
   );

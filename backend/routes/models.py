@@ -1,7 +1,6 @@
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter
 
 from services.registry_service import build_registry
 
@@ -11,16 +10,14 @@ router = APIRouter(prefix="/api/v1", tags=["models"])
 
 
 @router.get("/models")
-async def list_models(
-    x_meta_api_key: Optional[str] = Header(default=None, alias="X-Meta-API-Key"),
-):
+async def list_models():
     """
     Canonical model registry — frontier catalog + optional OpenRouter hydration.
     """
     try:
-        return await build_registry(openrouter_api_key=x_meta_api_key)
-    except Exception as e:
-        logger.exception("registry build failed: %s", e)
+        return await build_registry()
+    except Exception:
+        logger.exception("registry build failed")
         # Fallback minimal registry so UI never hard-crashes
         from registry.catalog import FRONTIER_CATALOG, PROVIDER_META
 
@@ -36,6 +33,8 @@ async def list_models(
                 "freeTier": m.get("freeTier", False),
                 "openSource": m.get("openSource", False),
                 "relaySupported": m.get("relaySupported", False),
+                "supportsWebSearch": m.get("supportsWebSearch", False),
+                "source": m.get("source", "catalog"),
             }
             for m in FRONTIER_CATALOG
         ]
@@ -50,15 +49,25 @@ async def list_models(
                 "relayLabel": PROVIDER_META.get(pid, {}).get("relayLabel"),
                 "models": groups[pid],
             }
-            for pid in ["openai", "google", "anthropic", "meta", "custom"]
+            for pid in [
+                "openai",
+                "google",
+                "anthropic",
+                "opencode-go",
+                "opencode-zen",
+                "meta",
+                "custom",
+            ]
             if pid in groups
         ]
         return {
-            "version": "2",
+            "version": "3",
             "updatedAt": None,
             "streaming": True,
             "byok": True,
             "openRouterHydrated": False,
+            "openCodeGoHydrated": False,
+            "openCodeZenHydrated": False,
             "liveSync": False,
             "fingerprint": "backend-fallback",
             "providers": providers,

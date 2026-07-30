@@ -7,15 +7,15 @@ ModelWise is a **local-first BYOK evaluation workbench**: React frontend + FastA
 ```
 modelwise/
 ├── src/                    # React frontend (Vite)
-│   ├── components/         # UI (playground, dashboard, settings)
+│   ├── components/         # UI (playground, landing, settings)
 │   ├── lib/                # compare-stream, model-registry, session-store
 │   ├── hooks/              # use-model-registry, use-stream-diff
 │   └── config/providers.ts # BYOK branding + relay config (no model lists)
 ├── backend/
 │   ├── main.py             # App entry — mounts routers only
-│   ├── routes/             # compare, stream, models, health, auth
+│   ├── routes/             # compare, stream, models, health
 │   ├── services/           # compare_service, stream_service, registry_service
-│   ├── providers/          # openai, google, anthropic, meta, custom
+│   ├── providers/          # openai, google, anthropic, opencode, meta, custom
 │   ├── registry/           # Frontier model catalog
 │   └── utils/              # BYOK headers, model_resolver
 └── docs/                   # Architecture, streaming, registry, providers
@@ -45,8 +45,9 @@ Browser ──POST /api/v1/stream──► stream_service
 
 ```
 Browser ──GET /api/v1/models──► registry_service
-                                    ├── FRONTIER_CATALOG (static)
-                                    └── optional OpenRouter merge
+                                     ├── FRONTIER_CATALOG (static)
+                                     ├── public OpenRouter merge
+                                     └── OpenCode Go / Zen model lists
 ```
 
 ## Frontend modules
@@ -57,7 +58,7 @@ Browser ──GET /api/v1/models──► registry_service
 | `consumeCompareStream` | SSE reader + event dispatch |
 | `buildCompareHeaders` | Maps BYOK keys to `X-*-API-Key` headers |
 | `useModelRegistry` | Cached registry hydration + filters |
-| `session-store` | localStorage comparison history |
+| `session-store` | IndexedDB comparison history |
 
 ## Backend modules
 
@@ -70,10 +71,11 @@ Browser ──GET /api/v1/models──► registry_service
 
 ## Security model
 
-1. **Keys never persisted server-side** — passed per-request in headers
-2. **Keys stored in browser** — `secure-api-keys` (localStorage, profile-scoped)
-3. **Backend is a forwarder** — no centralized billing or inference
-4. **CORS restricted** — dev origins in `CORS_ORIGINS`
+1. **Memory-only key default** — `secure-api-keys` holds active keys in runtime memory
+2. **Explicit encrypted persistence** — password-protected IndexedDB vault or encrypted file export
+3. **Backend key transit** — selected keys and prompts pass per request in headers/body; the backend does not intentionally persist keys
+4. **Backend is a forwarder** — external providers receive requests and perform inference
+5. **CORS restricted** — dev origins in `CORS_ORIGINS`
 
 ## Data flow diagram
 
@@ -94,7 +96,7 @@ sequenceDiagram
     API-->>UI: event token (right)
   end
   API-->>UI: event complete
-  UI->>UI: save session (localStorage)
+  UI->>UI: save successful or partial session (IndexedDB)
 ```
 
 ## Extension points

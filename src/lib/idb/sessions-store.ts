@@ -1,7 +1,8 @@
 import { ENTITY_SCHEMA_VERSION, type SyncMeta } from "@/types/sync";
 import { getDeviceId } from "./device-id";
 import { getLocalDb, notifyLocalDbChange } from "./db";
-import { enqueueSync } from "./sync-queue";
+
+export type ComparisonVerdict = "left" | "tie" | "right";
 
 export interface ComparisonSessionRecord extends SyncMeta {
   id: string;
@@ -17,6 +18,7 @@ export interface ComparisonSessionRecord extends SyncMeta {
   leftTokens?: number;
   rightTokens?: number;
   pinned?: boolean;
+  verdict?: ComparisonVerdict;
 }
 
 export type ComparisonSessionInput = Omit<
@@ -77,9 +79,6 @@ export async function putSessionRecord(
     await tx.done;
   }
 
-  if (!options?.skipSync) {
-    await enqueueSync("comparison_sessions", record.id, "upsert");
-  }
   notifyLocalDbChange();
   return record;
 }
@@ -90,7 +89,6 @@ export async function softDeleteSessionRecord(id: string): Promise<void> {
   if (!row) return;
   const now = Date.now();
   await db.put("comparison_sessions", { ...row, deletedAt: now, updatedAt: now });
-  await enqueueSync("comparison_sessions", id, "delete");
   notifyLocalDbChange();
 }
 
@@ -101,7 +99,6 @@ export async function clearSessionRecords(): Promise<void> {
   const tx = db.transaction("comparison_sessions", "readwrite");
   for (const row of all) {
     await tx.store.put({ ...row, deletedAt: now, updatedAt: now });
-    await enqueueSync("comparison_sessions", row.id, "delete");
   }
   await tx.done;
   notifyLocalDbChange();
@@ -114,17 +111,22 @@ export async function toggleSessionPinnedRecord(id: string): Promise<void> {
   await putSessionRecord({ ...row, pinned: !row.pinned, id: row.id, timestamp: row.timestamp });
 }
 
+export async function updateSessionVerdictRecord(
+  id: string,
+  verdict: ComparisonVerdict | undefined
+): Promise<ComparisonSessionRecord | undefined> {
+  const db = await getLocalDb();
+  const row = await db.get("comparison_sessions", id);
+  if (!row || row.deletedAt != null) return undefined;
+  return putSessionRecord({ ...row, verdict, id: row.id, timestamp: row.timestamp });
+}
+
 export async function upsertSessionRecordLocal(
   record: ComparisonSessionRecord,
   options?: { skipSync?: boolean }
 ): Promise<void> {
   const db = await getLocalDb();
   await db.put("comparison_sessions", record);
-  if (!options?.skipSync && record.deletedAt == null) {
-    await enqueueSync("comparison_sessions", record.id, "upsert");
-  } else if (!options?.skipSync && record.deletedAt != null) {
-    await enqueueSync("comparison_sessions", record.id, "delete");
-  }
   notifyLocalDbChange();
 }
 

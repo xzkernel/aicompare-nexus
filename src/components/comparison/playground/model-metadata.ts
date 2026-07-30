@@ -44,6 +44,7 @@ export function getRoutingLabel(providerId: string, apiKeys: ApiKeys): string {
     (providerId === "openai" && !!apiKeys.openaiKey) ||
     (providerId === "google" && !!apiKeys.googleKey) ||
     (providerId === "anthropic" && !!apiKeys.anthropicKey) ||
+    ((providerId === "opencode-go" || providerId === "opencode-zen") && apiKeys.opencodeKey.trim().length > 5) ||
     (providerId === "meta" && !!apiKeys.metaRelayKey) ||
     (providerId === "custom" && !!apiKeys.customApiKey);
 
@@ -51,6 +52,10 @@ export function getRoutingLabel(providerId: string, apiKeys: ApiKeys): string {
     const relayId = apiKeys.metaRelayProvider || "openrouter";
     const opt = PROVIDER_CONFIG.meta.relayConfig?.options.find((o) => o.id === relayId);
     return opt?.label ?? "OpenRouter";
+  }
+
+  if (providerId === "opencode-go" || providerId === "opencode-zen") {
+    return hasDirect ? "OpenCode" : "no routes";
   }
 
   if (hasDirect) return "Direct";

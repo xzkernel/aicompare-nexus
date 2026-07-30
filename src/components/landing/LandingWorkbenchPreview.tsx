@@ -56,7 +56,7 @@ function OutputPreview({
   );
 }
 
-/** Static workbench artifact — real data, no overbuilt transforms */
+/** Static workbench demo using illustrative responses. */
 export function LandingWorkbenchPreview() {
   return (
     <div className="relative min-h-[560px] overflow-hidden bg-[#0d0d0d]">
@@ -67,22 +67,20 @@ export function LandingWorkbenchPreview() {
           <span className="h-2 w-2 rounded-full bg-accent-cyan/50" />
         </div>
         <span className="font-mono text-[9px] tracking-wider text-text-muted/70">
-          modelwise-workbench / comparison
+          illustrative demo / comparison
         </span>
         <Link to="/playground" className="font-mono text-[9px] text-accent-cyan/80 hover:text-accent-cyan">
-          live
+          open playground
         </Link>
       </div>
 
       <div className="px-4 pt-2 md:px-5">
         <PlaygroundToolbar
-          leftModelLabel="OpenAI — GPT-4o"
-          rightModelLabel="Google — Gemini 1.5 Pro"
+          leftModelLabel="OpenAI — GPT-5.5"
+          rightModelLabel="Google — Gemini 3.1 Pro"
           isComparing={false}
-          promptTokens={Math.round(DEMO_PROMPT.length / 4)}
           leftResponse={LEFT}
           rightResponse={RIGHT}
-          divergenceScore={diff.divergenceScore}
         />
       </div>
 
@@ -102,13 +100,13 @@ export function LandingWorkbenchPreview() {
 
       <div className="grid md:grid-cols-2 md:divide-x md:divide-white/[0.04]">
         <OutputPreview
-          label="GPT-4o"
+          label="GPT-5.5"
           text={LEFT.response}
           ms={LEFT.responseTime}
           segments={diff.leftSegments}
         />
         <OutputPreview
-          label="Gemini 1.5 Pro"
+          label="Gemini 3.1 Pro"
           text={RIGHT.response}
           ms={RIGHT.responseTime}
           segments={diff.rightSegments}
@@ -122,7 +120,7 @@ export function LandingWorkbenchPreview() {
         </span>
         <span className="flex items-center gap-1.5 text-accent-cyan/70">
           <GitCompare className="h-3 w-3" />
-          evaluation complete
+          sample complete
         </span>
       </div>
     </div>

@@ -6,22 +6,16 @@
     "ar": "العربية"
   },
   "nav": {
-    "dashboard": "Dashboard",
     "playground": "Playground",
     "sessions": "Sessions",
-    "benchmarks": "Benchmarks",
     "providers": "Providers",
     "settings": "Settings",
-    "workspace": "Workspace",
-    "newWorkspace": "New Workspace",
     "docs": "Docs",
     "support": "Support",
     "compare": "Compare",
     "quickstart": "Quickstart",
     "github": "GitHub",
-    "signIn": "Sign In",
     "getStarted": "Get Started",
-    "byokActive": "BYOK ACTIVE",
     "openNav": "Open navigation"
   },
   "footer": {
@@ -29,23 +23,22 @@
     "app": "App",
     "project": "Project",
     "selfHosting": "Self-hosting",
+    "privacy": "Privacy",
+    "security": "Security",
     "rights": "All rights reserved."
   },
   "settings": {
     "controlCenter": "Control Center",
-    "subtitle": "Infrastructure & Auth Management",
-    "providersConnected": "{{count}} provider connected",
-    "providersConnected_plural": "{{count}} providers connected",
-    "ready": "READY",
+    "subtitle": "Local infrastructure management",
+    "routesConfigured": "{{count}} route configured",
+    "routesConfigured_plural": "{{count}} routes configured",
+    "keyPresent": "KEY PRESENT",
     "keysRequired": "KEYS REQUIRED",
     "sections": {
-      "profiles": { "label": "Profiles", "description": "Key profiles" },
-      "providers": { "label": "Providers", "description": "Connection overview" },
+      "providers": { "label": "Providers", "description": "Configuration overview" },
       "api-keys": { "label": "API Keys", "description": "Credentials & routing" },
       "storage": { "label": "Storage", "description": "Export & device vault" },
-      "cloud": { "label": "Cloud", "description": "Optional sync" },
       "sessions": { "label": "Sessions", "description": "Benchmark data" },
-      "cost": { "label": "Cost", "description": "Usage estimates" },
       "security": { "label": "Security", "description": "Privacy & isolation" }
     }
   },
@@ -60,7 +53,7 @@
     "placeholder": "Enter evaluation prompt…",
     "modelEval": "Model evaluation",
     "dualCompare": "Dual compare",
-    "securityKeysLocal": "Keys local-only · never synced",
+    "securityKeysLocal": "Keys memory-only by default · device-only storage",
     "securityUntrustedOutput": "Outputs are untrusted model content",
     "presets": {
       "reasoning": "Reasoning",
@@ -104,30 +97,10 @@
       "noKeyB": "Model B has no API key route — this side will be skipped."
     }
   },
-  "auth": {
-    "localMode": "LOCAL MODE",
-    "localModeLabel": "Local mode",
-    "signInToSync": "Sign in to sync",
-    "optionalSync": "Optional cloud sync — no account required to compare.",
-    "optionalCloudSync": "Optional cloud sync",
-    "signInToSyncLink": "Sign in to sync →",
-    "continueLocally": "Continue locally",
-    "syncOptional": "Optional cloud sync for a local-first evaluation workbench.",
-    "heroTitle": "Sync or",
-    "heroTitleAccent": "stay local.",
-    "heroSubtitle": "ModelWise is a local-first evaluation workbench. Cloud identity is an optional sync layer — compare runs the same either way."
-  },
   "notFound": {
     "code": "404",
     "title": "Route not found",
     "landing": "Landing",
     "playground": "Playground"
-  },
-  "account": {
-    "syncing": "SYNCING",
-    "syncErr": "SYNC ERR",
-    "offline": "OFFLINE",
-    "syncOk": "SYNC OK",
-    "local": "LOCAL"
   }
 }

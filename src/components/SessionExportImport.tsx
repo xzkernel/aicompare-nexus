@@ -21,6 +21,62 @@ interface DatasetExport {
   sessions: ComparisonSession[];
 }
 
+const CSV_SAFE_PREFIX = "'\t";
+
+function encodeCsvCell(value: string | number | boolean | undefined, userControlled = false): string {
+  let text = value == null ? "" : String(value);
+  if (userControlled && (text.startsWith(CSV_SAFE_PREFIX) || /^[\s]*[=+\-@]/.test(text))) {
+    text = CSV_SAFE_PREFIX + text;
+  }
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function decodeCsvCell(value: string): string {
+  return value.startsWith(CSV_SAFE_PREFIX) ? value.slice(CSV_SAFE_PREFIX.length) : value;
+}
+
+function parseCsv(text: string, maxRows: number): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"' && field.length === 0) {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      if (rows.length >= maxRows) return rows;
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  if (quoted) throw new Error("Unterminated quoted CSV field");
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    if (row.some((cell) => cell.length > 0)) rows.push(row);
+  }
+  return rows;
+}
+
 export function SessionExportImport() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -71,21 +127,27 @@ export function SessionExportImport() {
           "Right Response",
           "Left Time (ms)",
           "Right Time (ms)",
+          "Left Tokens",
+          "Right Tokens",
           "Pinned",
+          "Verdict",
         ].join(",");
 
         const csvRows = sessions.map((s) =>
           [
-            s.id,
-            new Date(s.timestamp).toISOString(),
-            `"${s.prompt.replace(/"/g, '""')}"`,
-            s.leftModel,
-            s.rightModel,
-            `"${(s.leftResponse || "").replace(/"/g, '""')}"`,
-            `"${(s.rightResponse || "").replace(/"/g, '""')}"`,
-            s.leftTimeMs ?? "",
-            s.rightTimeMs ?? "",
-            s.pinned ? "yes" : "no",
+            encodeCsvCell(s.id, true),
+            encodeCsvCell(new Date(s.timestamp).toISOString()),
+            encodeCsvCell(s.prompt, true),
+            encodeCsvCell(s.leftModel, true),
+            encodeCsvCell(s.rightModel, true),
+            encodeCsvCell(s.leftResponse, true),
+            encodeCsvCell(s.rightResponse, true),
+            encodeCsvCell(s.leftTimeMs),
+            encodeCsvCell(s.rightTimeMs),
+            encodeCsvCell(s.leftTokens),
+            encodeCsvCell(s.rightTokens),
+            encodeCsvCell(s.pinned ? "yes" : "no"),
+            encodeCsvCell(s.verdict),
           ].join(",")
         );
 
@@ -143,31 +205,70 @@ export function SessionExportImport() {
             rightResponse: typeof s.rightResponse === "string" ? s.rightResponse : undefined,
             leftTimeMs: typeof s.leftTimeMs === "number" ? s.leftTimeMs : undefined,
             rightTimeMs: typeof s.rightTimeMs === "number" ? s.rightTimeMs : undefined,
+            leftTokens: typeof s.leftTokens === "number" ? s.leftTokens : undefined,
+            rightTokens: typeof s.rightTokens === "number" ? s.rightTokens : undefined,
             pinned: s.pinned === true,
+            verdict:
+              s.verdict === "left" || s.verdict === "tie" || s.verdict === "right"
+                ? s.verdict
+                : undefined,
           }))
           .filter((s) => s.prompt.length > 0 && s.leftModel.length > 0);
       } else if (file.name.endsWith(".csv")) {
-        const lines = text.split("\n").filter((l) => l.trim());
-        // Skip header row; limit to 10 000 rows to prevent DoS
-        for (let i = 1; i < Math.min(lines.length, 10_001); i++) {
-          const values = lines[i].split(",");
-          const unquote = (v: string | undefined) =>
-            (v ?? "").replace(/^"|"$/g, "").replace(/""/g, '"');
-          const prompt = unquote(values[2]).slice(0, 32_000);
-          const leftModel = (values[3] ?? "").slice(0, 128);
+        const rows = parseCsv(text, 10_001);
+        const headers = rows[0] ?? [];
+        const column = (name: string, fallback: number) => {
+          const index = headers.indexOf(name);
+          return index >= 0 ? index : fallback;
+        };
+        const indexes = {
+          id: column("Session ID", 0),
+          timestamp: column("Timestamp", 1),
+          prompt: column("Prompt", 2),
+          leftModel: column("Left Model", 3),
+          rightModel: column("Right Model", 4),
+          leftResponse: column("Left Response", 5),
+          rightResponse: column("Right Response", 6),
+          leftTime: column("Left Time (ms)", 7),
+          rightTime: column("Right Time (ms)", 8),
+          leftTokens: headers.indexOf("Left Tokens"),
+          rightTokens: headers.indexOf("Right Tokens"),
+          pinned: column("Pinned", 9),
+          verdict: headers.indexOf("Verdict"),
+        };
+        const get = (values: string[], index: number) =>
+          index >= 0 ? decodeCsvCell(values[index] ?? "") : "";
+        const optionalNumber = (value: string) => {
+          if (!value) return undefined;
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : undefined;
+        };
+
+        for (let i = 1; i < rows.length; i++) {
+          const values = rows[i];
+          const prompt = get(values, indexes.prompt).slice(0, 32_000);
+          const leftModel = get(values, indexes.leftModel).slice(0, 128);
           if (!prompt || !leftModel) continue;
-          const ts = new Date(values[1]).getTime();
+          const ts = new Date(get(values, indexes.timestamp)).getTime();
+          const id = get(values, indexes.id);
+          const verdict = get(values, indexes.verdict);
           imported.push({
-            id: values[0]?.length < 128 ? (values[0] || crypto.randomUUID()) : crypto.randomUUID(),
+            id: id.length < 128 ? (id || crypto.randomUUID()) : crypto.randomUUID(),
             timestamp: Number.isFinite(ts) ? ts : Date.now(),
             prompt,
             leftModel,
-            rightModel: (values[4] ?? "").slice(0, 128),
-            leftResponse: unquote(values[5]) || undefined,
-            rightResponse: unquote(values[6]) || undefined,
-            leftTimeMs: values[7] ? parseInt(values[7], 10) : undefined,
-            rightTimeMs: values[8] ? parseInt(values[8], 10) : undefined,
-            pinned: values[9] === "yes",
+            rightModel: get(values, indexes.rightModel).slice(0, 128),
+            leftResponse: get(values, indexes.leftResponse) || undefined,
+            rightResponse: get(values, indexes.rightResponse) || undefined,
+            leftTimeMs: optionalNumber(get(values, indexes.leftTime)),
+            rightTimeMs: optionalNumber(get(values, indexes.rightTime)),
+            leftTokens: optionalNumber(get(values, indexes.leftTokens)),
+            rightTokens: optionalNumber(get(values, indexes.rightTokens)),
+            pinned: get(values, indexes.pinned) === "yes",
+            verdict:
+              verdict === "left" || verdict === "tie" || verdict === "right"
+                ? verdict
+                : undefined,
           });
         }
       } else {

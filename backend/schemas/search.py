@@ -59,5 +59,7 @@ PROVIDER_SEARCH_LABELS = {
     "anthropic": "Claude web_search",
     "meta": "OpenRouter online",
     "openai": "Not available",
+    "opencode-go": "Not available",
+    "opencode-zen": "Not available",
     "custom": "Not available",
 }

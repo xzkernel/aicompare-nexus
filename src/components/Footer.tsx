@@ -9,13 +9,14 @@ export const Footer = () => {
   const links = {
     app: [
       { label: t("nav.playground"), href: "/playground", internal: true },
-      { label: t("nav.dashboard"), href: "/dashboard", internal: true },
       { label: t("nav.settings"), href: "/settings", internal: true },
     ],
     project: [
       { label: t("nav.github"), href: REPO, internal: false },
       { label: t("nav.quickstart"), href: `${REPO}#quick-start`, internal: false },
       { label: t("footer.selfHosting"), href: `${REPO}/blob/main/docs/SELF_HOSTING.md`, internal: false },
+      { label: t("footer.privacy"), href: `${REPO}/blob/main/docs/PRIVACY.md`, internal: false },
+      { label: t("footer.security"), href: `${REPO}/blob/main/SECURITY.md`, internal: false },
     ],
   };
 
@@ -66,7 +67,7 @@ export const Footer = () => {
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">
-            © 2025 MODELWISE RESEARCH. {t("footer.rights").toUpperCase()}
+            © 2026 MODELWISE RESEARCH. {t("footer.rights").toUpperCase()}
           </span>
           <div className="flex gap-[16px] font-mono text-[10px] text-white/30">
             <span>OPEN-SOURCE</span>

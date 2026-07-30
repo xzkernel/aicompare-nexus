@@ -1,30 +1,34 @@
 /**
  * Stitch: py-stack-lg px-margin-safe. max-w-container-max.
  * No section header above the table — table starts immediately.
- * 4-column grid: Provider | Supported Models | Routing Protocol | Status.
- * Footer: "REQUESTS NEVER STORED" left + "SECURE END-TO-END ENCRYPTION" right.
+ * 4-column grid: Provider | Supported Models | Routing Protocol | Setup.
  */
 
 const PROVIDER_ROWS = [
   {
     name: "OpenAI",
-    models: "GPT-4o, GPT-4o Mini, o1, o3-mini",
-    routing: "DIRECT_REST_API",
+    models: "GPT-5.5, GPT-5.5 Pro, GPT-5 Mini",
+    routing: "BACKEND_PROVIDER_API",
   },
   {
     name: "Anthropic",
-    models: "Claude Sonnet 4, Claude Opus 4",
-    routing: "DIRECT_REST_API",
+    models: "Claude Opus 4.8, Claude Sonnet 4.6",
+    routing: "BACKEND_PROVIDER_API",
   },
   {
     name: "Google",
-    models: "Gemini 2.5 Pro, Gemini 2.5 Flash",
-    routing: "DIRECT_REST_API",
+    models: "Gemini 3.1 Pro, Gemini 3.5 Flash",
+    routing: "BACKEND_PROVIDER_API",
+  },
+  {
+    name: "OpenCode Go / Zen",
+    models: "Grok, GLM, MiniMax, Qwen, GPT, Claude, Gemini, DeepSeek",
+    routing: "BACKEND_OPENCODE_ROUTE",
   },
   {
     name: "OpenRouter / Relay",
     models: "DeepSeek, Llama 4, Qwen 3, Gemma 3",
-    routing: "OPENAI_COMPATIBLE_RELAY",
+    routing: "BACKEND_RELAY_ROUTE",
   },
 ];
 
@@ -46,7 +50,7 @@ export function Integrations() {
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white">Routing Protocol</span>
             </div>
             <div className="p-[24px]">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white">Status</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white">Setup</span>
             </div>
           </div>
 
@@ -66,8 +70,8 @@ export function Integrations() {
                 {row.routing}
               </div>
               <div className="flex items-center gap-2 p-[24px]">
-                <span className="h-2 w-2 rounded-full bg-[#5de6ff]" />
-                <span className="font-mono text-[11px] text-white">OPERATIONAL</span>
+                <span className="h-2 w-2 rounded-full bg-white/30" />
+                <span className="font-mono text-[11px] text-white/60">KEY REQUIRED</span>
               </div>
             </div>
           ))}
@@ -75,8 +79,8 @@ export function Integrations() {
 
         {/* Footer row — Stitch exact */}
         <div className="mt-[16px] flex items-center justify-between font-mono text-[10px] text-white/30">
-          <span>REQUESTS NEVER STORED ON OUR SERVERS</span>
-          <span>SECURE END-TO-END ENCRYPTION</span>
+          <span>KEYS TRANSIT YOUR CONFIGURED MODELWISE BACKEND</span>
+          <span>BACKEND DOES NOT INTENTIONALLY PERSIST KEYS</span>
         </div>
 
       </div>

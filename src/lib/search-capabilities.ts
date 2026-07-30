@@ -13,6 +13,14 @@ export function getSearchSupportForRoute(
 ): ProviderSearchSupport {
   const route = resolvedProviderName ?? modelProviderId;
 
+  if (route === "opencode-go" || route === "opencode-zen") {
+    return {
+      supported: false,
+      label: "Not available",
+      hint: "Web search is not available for OpenCode routes",
+    };
+  }
+
   if (route === "google") {
     return {
       supported: true,
@@ -49,6 +57,7 @@ export function getSearchSupportForRoute(
 }
 
 export function modelSupportsWebSearch(model: RegistryModel | undefined, routeProvider?: string): boolean {
+  if (model?.provider.startsWith("opencode-") || routeProvider?.startsWith("opencode-")) return false;
   if (model?.supportsWebSearch === false) return false;
   if (model?.supportsWebSearch === true) return true;
   return getSearchSupportForRoute(model?.provider ?? "", routeProvider).supported;

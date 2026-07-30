@@ -33,9 +33,9 @@ Related: [PROVIDERS.md](./PROVIDERS.md) · [ARCHITECTURE.md](./ARCHITECTURE.md)
 }
 ```
 
-### OpenRouter (optional)
+### Live hydration
 
-Set `OPENROUTER_API_KEY` in the backend environment, or send `X-Meta-API-Key` on the registry request. Up to 80 additional models are merged under the **OpenRouter** provider without duplicating catalog entries.
+The backend merges up to 200 relevant models from the public OpenRouter catalog and hydrates the OpenCode Go and Zen model lists. Registry requests do not carry browser provider keys.
 
 ## Frontend
 
@@ -60,5 +60,7 @@ Set `OPENROUTER_API_KEY` in the backend environment, or send `X-Meta-API-Key` on
 | openai | OpenAI | — |
 | google | Google | — |
 | anthropic | Anthropic | OpenRouter (fallback) |
+| opencode-go | OpenCode Go | — |
+| opencode-zen | OpenCode Zen | — |
 | meta | OpenRouter | OpenRouter |
 | custom | Custom HTTP | — |

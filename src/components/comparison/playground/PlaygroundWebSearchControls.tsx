@@ -94,11 +94,11 @@ export function PlaygroundWebSearchControls({
         : null;
 
   return (
-    <div className="flex flex-col gap-3 border border-stroke-subtle bg-bg-soft/20 px-3 py-2">
+    <div className="flex flex-col gap-3 px-3 py-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Globe className="h-3.5 w-3.5 text-accent-cyan" strokeWidth={1.75} />
-          <span className="font-mono text-[11px] text-text-primary">Search policy</span>
+          <span className="text-sm font-medium text-text-primary">Search policy</span>
           <span
             className={cn(
               "mw-label-mono rounded px-1.5 py-0.5 text-[9px] ring-1",
@@ -116,6 +116,7 @@ export function PlaygroundWebSearchControls({
             <button
               key={m.id}
               type="button"
+              aria-pressed={searchMode === m.id}
               disabled={isComparing}
               title={m.description}
               onClick={() => onSearchModeChange(m.id)}
@@ -140,7 +141,7 @@ export function PlaygroundWebSearchControls({
       {parityNote && (
         <div className="flex items-start gap-1.5">
           <Info className="mt-0.5 h-3 w-3 shrink-0 text-accent-yellow" />
-          <p className="font-mono text-[10px] text-text-muted">{parityNote}</p>
+          <p className="text-xs text-text-muted">{parityNote}</p>
         </div>
       )}
     </div>

@@ -1,10 +1,7 @@
 import type { ApiKeys } from "@/lib/secure-api-keys";
-import type { SettingsSectionId } from "./SettingsLayout";
+import type { SettingsSectionId } from "./settings-sections";
 
 export type SettingsHandlersProps = {
-  profileId: string;
-  setProfileId: (id: string) => void;
-  availableProfiles: string[];
   apiKeys: ApiKeys;
   setApiKeys: (keys: ApiKeys) => void;
   showKeys: Record<string, boolean>;
@@ -12,13 +9,12 @@ export type SettingsHandlersProps = {
   handleKeyChange: (keyName: string, value: string) => void;
   handleMetaRelayChange: (provider: "openrouter" | "together") => void;
   handleCustomConfigChange: (field: "baseUrl" | "keyHeader", value: string) => void;
-  handleSave: () => void;
   handleClear: () => void;
-  isLoading: boolean;
   hasValidKeys: boolean;
   openaiValid: boolean;
   googleValid: boolean;
   anthropicValid: boolean;
+  opencodeValid: boolean;
   metaValid: boolean;
   customValid: boolean;
   password: string;
@@ -37,6 +33,7 @@ export type SettingsHandlersProps = {
   handleImport: (file: File) => void;
   handleSaveToIndexedDB: () => void;
   handleLoadFromIndexedDB: () => void;
+  handleDeleteFromIndexedDB: () => void;
   activeSection: SettingsSectionId;
   setActiveSection: (id: SettingsSectionId) => void;
 };

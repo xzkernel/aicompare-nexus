@@ -7,6 +7,7 @@ from .anthropic import AnthropicProvider
 from .meta import MetaRelayProvider
 from .custom import CustomProvider
 from .base import BaseProvider
+from .opencode import OpenCodeProvider
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ def provider_for(name: str, key: str, model: str, extras: Dict[str, Any] | None 
         return GeminiProvider(key, model)
     if name == "anthropic":
         return AnthropicProvider(key, model)
+    if name in {"opencode-go", "opencode-zen"}:
+        return OpenCodeProvider(key, model, name)
     if name == "meta":
         base_url = extras.get("base_url")
         if not base_url:

@@ -5,21 +5,32 @@ import { ComparisonSessionList } from "@/components/sessions/ComparisonSessionLi
 import { getComparisonSession, type ComparisonSession } from "@/lib/session-store";
 
 export default function Playground() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const sessionId = params.get("session");
   const [restoredSession, setRestoredSession] = useState<ComparisonSession | null>(null);
 
   useEffect(() => {
+    let active = true;
     if (!sessionId) {
       setRestoredSession(null);
-      return;
+      return () => {
+        active = false;
+      };
     }
-    void getComparisonSession(sessionId).then((s) => setRestoredSession(s ?? null));
+    void getComparisonSession(sessionId).then((session) => {
+      if (active) setRestoredSession(session ?? null);
+    });
+    return () => {
+      active = false;
+    };
   }, [sessionId]);
 
   return (
     <div className="mx-auto max-w-workspace space-y-4">
-      <PromptPlayground restoredSession={restoredSession} />
+      <PromptPlayground
+        restoredSession={restoredSession}
+        onSessionSaved={(id) => setParams({ session: id }, { replace: true })}
+      />
       <section className="border border-stroke-subtle bg-bg-paper/20 p-3">
         <ComparisonSessionList limit={8} />
       </section>

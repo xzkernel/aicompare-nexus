@@ -9,27 +9,27 @@ import { cn } from "@/lib/utils";
 const FAQS = [
   {
     q: "How is ModelWise different from OpenRouter?",
-    a: "ModelWise is an orchestration tool, not just an API proxy. We focus on side-by-side benchmarking, visual diffs, and local execution monitoring rather than unified billing.",
+    a: "ModelWise is an evaluation workbench rather than a unified billing API. It focuses on side-by-side streaming comparisons, visual diffs, and browser session tools while routing inference through the configured backend.",
   },
   {
     q: "Is my data secure?",
-    a: "Yes. API keys are stored in memory and never sent to ModelWise servers. Prompts go directly to the provider you configure. Sessions persist only in your browser's local storage.",
+    a: "API keys are memory-only by default. Keys and prompts transit the ModelWise backend you configure, which does not intentionally persist keys, before requests reach external providers. An encrypted device vault is optional, and completed comparisons are saved to browser IndexedDB.",
   },
   {
     q: "Can I host this on-premise?",
-    a: "Yes. Deploy ModelWise as a Docker container within your secure infrastructure for total data sovereignty. Run `docker compose -f docker-compose.prod.yml up -d --build` to get started. See docs/SELF_HOSTING.md for details.",
+    a: "Yes. Deploy ModelWise on your infrastructure with `docker compose -f docker-compose.prod.yml up -d --build`. You control the ModelWise services, while configured external AI providers still receive routed prompts and requests.",
   },
   {
     q: "Which models are supported?",
-    a: "OpenAI GPT, Anthropic Claude, Google Gemini, Meta Llama via relay, and custom HTTP endpoints. See the provider registry in Settings.",
+    a: "OpenAI GPT, Anthropic Claude, Google Gemini, OpenCode Go and Zen, Meta Llama via relay, and custom HTTP endpoints. See the provider registry in Settings.",
   },
   {
     q: "Can I export comparison history?",
-    a: "Yes — JSON or CSV from Settings → Sessions. Import restores history into local storage.",
+    a: "Yes. Export JSON or CSV from Settings → Sessions. Import restores history into browser IndexedDB.",
   },
   {
     q: "Is there a usage limit?",
-    a: "ModelWise imposes none. Provider quotas and billing apply to your own API accounts.",
+    a: "Limits depend on the ModelWise deployment and your providers. Provider quotas, rate limits, and billing apply to your API accounts.",
   },
 ];
 

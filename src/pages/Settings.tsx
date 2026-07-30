@@ -2,18 +2,17 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useSecureApiKeys } from "@/lib/secure-api-keys";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { SettingsView } from "@/components/settings/SettingsView";
-import type { SettingsSectionId } from "@/components/settings/SettingsLayout";
+import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "@/components/settings/settings-sections";
 
 export default function Settings() {
-  const [searchParams] = useSearchParams();
-  const [profileId, setProfileId] = useState('default');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('api-keys');
   const [showKeys, setShowKeys] = useState<{ [key: string]: boolean }>({
     openaiKey: false,
     googleKey: false,
     anthropicKey: false,
+    opencodeKey: false,
     metaRelayKey: false,
     customApiKey: false
   });
@@ -23,49 +22,32 @@ export default function Settings() {
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
   const { toast } = useToast();
   
   const {
     apiKeys,
     setApiKeys,
     clearApiKeys,
-    validateApiKey,
     getApiKeyStatus,
-    getApiKey,
     exportKeys,
     importKeys,
     saveKeysToIndexedDB,
     loadKeysFromIndexedDB,
     deleteKeysFromIndexedDB,
-    listProfiles,
     redactKeys,
-    isLoading
-  } = useSecureApiKeys(profileId);
-
-  // Load available profiles on mount
-  useEffect(() => {
-    const loadProfiles = async () => {
-      try {
-        const profiles = await listProfiles();
-        setAvailableProfiles(profiles);
-      } catch (error) {
-        console.error('Failed to load profiles:', error);
-      }
-    };
-    loadProfiles();
-  }, [listProfiles]);
+  } = useSecureApiKeys();
 
   useEffect(() => {
     const section = searchParams.get("section");
-    if (section === "cloud" && isSupabaseConfigured()) setActiveSection("cloud");
-  }, [searchParams]);
+    const nextSection = section && SETTINGS_SECTION_IDS.includes(section as SettingsSectionId)
+      ? section as SettingsSectionId
+      : "api-keys";
 
-  useEffect(() => {
-    if (activeSection === "cloud" && !isSupabaseConfigured()) {
-      setActiveSection("api-keys");
+    setActiveSection(nextSection);
+    if (section !== nextSection) {
+      setSearchParams({ section: nextSection }, { replace: true });
     }
-  }, [activeSection]);
+  }, [searchParams, setSearchParams]);
 
   // Handle API key input change
   const handleKeyChange = (keyName: string, value: string) => {
@@ -94,41 +76,12 @@ export default function Settings() {
     });
   };
 
-  // Handle save (in-memory only)
-  const handleSave = async () => {
-    try {
-      const { hasValidKeys } = getApiKeyStatus();
-
-      if (!hasValidKeys) {
-        toast({
-          title: "Invalid API Keys",
-          description: "Please enter at least one valid API key.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setApiKeys(apiKeys);
-
-      toast({
-        title: "API Keys Saved",
-        description: "Keys stored in this browser (localStorage). They reload on refresh.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: redactKeys(`Failed to save API keys: ${error}`),
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle clear keys
+  // Clear only the active in-memory values. The encrypted vault is separate.
   const handleClear = () => {
     clearApiKeys();
     toast({
-      title: "API Keys Cleared",
-      description: "All API keys have been removed from memory.",
+      title: "Active Keys Cleared",
+      description: "Active keys were removed from memory. Any encrypted device vault remains.",
     });
   };
 
@@ -138,6 +91,11 @@ export default function Settings() {
       ...prev,
       [keyName]: !prev[keyName]
     }));
+  };
+
+  const handleSectionChange = (section: SettingsSectionId) => {
+    setActiveSection(section);
+    setSearchParams({ section });
   };
 
   // Handle export
@@ -262,13 +220,30 @@ export default function Settings() {
     }
   };
 
-  const { hasValidKeys, openaiValid, googleValid, anthropicValid, metaValid, customValid } = getApiKeyStatus();
+  const handleDeleteFromIndexedDB = async () => {
+    if (!window.confirm("Delete the encrypted API key vault for this device? Active in-memory keys will remain.")) {
+      return;
+    }
+
+    try {
+      await deleteKeysFromIndexedDB();
+      toast({
+        title: "Encrypted Vault Deleted",
+        description: "The encrypted device copy was deleted. Active in-memory keys remain until cleared or the tab closes.",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: redactKeys(`Failed to delete encrypted vault: ${error}`),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const { hasValidKeys, openaiValid, googleValid, anthropicValid, opencodeValid, metaValid, customValid } = getApiKeyStatus();
 
   return (
     <SettingsView
-      profileId={profileId}
-      setProfileId={setProfileId}
-      availableProfiles={availableProfiles}
       apiKeys={apiKeys}
       setApiKeys={setApiKeys}
       showKeys={showKeys}
@@ -276,13 +251,12 @@ export default function Settings() {
       handleKeyChange={handleKeyChange}
       handleMetaRelayChange={handleMetaRelayChange}
       handleCustomConfigChange={handleCustomConfigChange}
-      handleSave={handleSave}
       handleClear={handleClear}
-      isLoading={isLoading}
       hasValidKeys={hasValidKeys}
       openaiValid={openaiValid}
       googleValid={googleValid}
       anthropicValid={anthropicValid}
+      opencodeValid={opencodeValid}
       metaValid={metaValid}
       customValid={customValid}
       password={password}
@@ -301,8 +275,9 @@ export default function Settings() {
       handleImport={handleImport}
       handleSaveToIndexedDB={handleSaveToIndexedDB}
       handleLoadFromIndexedDB={handleLoadFromIndexedDB}
+      handleDeleteFromIndexedDB={handleDeleteFromIndexedDB}
       activeSection={activeSection}
-      setActiveSection={setActiveSection}
+      setActiveSection={handleSectionChange}
     />
   );
 }

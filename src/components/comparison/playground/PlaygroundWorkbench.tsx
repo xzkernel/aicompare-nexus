@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { PlaygroundToolbar } from "./PlaygroundToolbar";
 import { PlaygroundPromptEditor } from "./PlaygroundPromptEditor";
 import { PlaygroundModelRow } from "./PlaygroundModelSlot";
 import { ComparisonOutputPanel } from "./ComparisonOutputPanel";
 import { LiveResponseDiff } from "./LiveResponseDiff";
 import { PlaygroundWebSearchControls } from "./PlaygroundWebSearchControls";
+import { EvaluationSummary } from "./EvaluationSummary";
 import { useStreamDiff } from "@/hooks/use-stream-diff";
 import { useGroundingSummary } from "@/hooks/use-grounding";
-import { estimateTokens, getPanelState, type ModelResponse } from "./types";
+import { getPanelState, type ModelResponse } from "./types";
 import type { ApiKeys } from "@/lib/secure-api-keys";
 import type { CompareExecutionState } from "@/lib/compare-execution-state";
 import type { SearchMode } from "@/lib/search-metadata";
-import { isSearchPolicyActive } from "@/lib/search-prefs";
+import type { ComparisonVerdict } from "@/lib/session-store";
 
 export type PlaygroundWorkbenchProps = {
   profileId: string;
@@ -24,6 +26,7 @@ export type PlaygroundWorkbenchProps = {
   onRightModelChange: (value: string) => void;
   onSwapModels: () => void;
   isComparing: boolean;
+  isFinalizing: boolean;
   compareExecution: CompareExecutionState;
   onCompare: () => void;
   onCancel?: () => void;
@@ -35,6 +38,8 @@ export type PlaygroundWorkbenchProps = {
   onSearchModeChange: (mode: SearchMode) => void;
   leftResolvedProvider?: string;
   rightResolvedProvider?: string;
+  verdict?: ComparisonVerdict;
+  onVerdictChange: (verdict: ComparisonVerdict) => void;
 };
 
 export function PlaygroundWorkbench({
@@ -48,6 +53,7 @@ export function PlaygroundWorkbench({
   onRightModelChange,
   onSwapModels,
   isComparing,
+  isFinalizing,
   compareExecution,
   onCompare,
   onCancel,
@@ -59,11 +65,15 @@ export function PlaygroundWorkbench({
   onSearchModeChange,
   leftResolvedProvider,
   rightResolvedProvider,
+  verdict,
+  onVerdictChange,
 }: PlaygroundWorkbenchProps) {
   const leftResponse = responses[0];
   const rightResponse = responses[1];
-  const leftLabel = getModelDisplayName(leftModel);
-  const rightLabel = getModelDisplayName(rightModel);
+  const leftOutputModel = leftResponse?.model ?? leftModel;
+  const rightOutputModel = rightResponse?.model ?? rightModel;
+  const leftLabel = getModelDisplayName(leftOutputModel);
+  const rightLabel = getModelDisplayName(rightOutputModel);
 
   const [, setLiveTick] = useState(0);
   useEffect(() => {
@@ -99,41 +109,24 @@ export function PlaygroundWorkbench({
         leftModelLabel={leftLabel}
         rightModelLabel={rightLabel}
         isComparing={isComparing}
-        promptTokens={estimateTokens(prompt)}
         leftResponse={leftResponse}
         rightResponse={rightResponse}
-        divergenceScore={showDiff ? diff.divergenceScore : undefined}
-        searchPolicyActive={isSearchPolicyActive(searchMode)}
-        groundingSummary={grounding}
-      />
-
-      <PlaygroundWebSearchControls
-        searchMode={searchMode}
-        onSearchModeChange={onSearchModeChange}
-        leftProviderId={leftModel.split(":")[0]}
-        rightProviderId={rightModel.split(":")[0]}
-        leftRoute={leftResolvedProvider}
-        rightRoute={rightResolvedProvider}
-        leftResponse={leftResponse}
-        rightResponse={rightResponse}
-        isComparing={isComparing}
       />
 
       <PlaygroundModelRow
         onSwap={onSwapModels}
+        disabled={isComparing}
         left={{
           value: leftModel,
           onChange: onLeftModelChange,
           profileId,
           apiKeys,
-          responseTime: leftResponse?.responseTime,
         }}
         right={{
           value: rightModel,
           onChange: onRightModelChange,
           profileId,
           apiKeys,
-          responseTime: rightResponse?.responseTime,
         }}
       />
 
@@ -141,13 +134,40 @@ export function PlaygroundWorkbench({
         prompt={prompt}
         onChange={onPromptChange}
         onCompare={onCompare}
-        onCancel={onCancel}
+        onCancel={isFinalizing ? undefined : onCancel}
         onClear={onClearPrompt}
         isComparing={isComparing}
+        isFinalizing={isFinalizing}
         compareExecution={compareExecution}
         leftProvider={leftModel.split(":")[0]}
         rightProvider={rightModel.split(":")[0]}
       />
+
+      <details className="group border border-stroke-subtle bg-bg-soft/15">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.75} />
+            <span className="text-sm font-medium text-text-primary">Run controls</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">
+              Search {searchMode}
+            </span>
+          </div>
+          <ChevronDown className="h-3.5 w-3.5 text-text-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-stroke-subtle">
+          <PlaygroundWebSearchControls
+            searchMode={searchMode}
+            onSearchModeChange={onSearchModeChange}
+            leftProviderId={leftModel.split(":")[0]}
+            rightProviderId={rightModel.split(":")[0]}
+            leftRoute={leftResolvedProvider}
+            rightRoute={rightResolvedProvider}
+            leftResponse={leftResponse}
+            rightResponse={rightResponse}
+            isComparing={isComparing}
+          />
+        </div>
+      </details>
 
       {(showDiff || isComparing) && (
         <LiveResponseDiff
@@ -169,7 +189,7 @@ export function PlaygroundWorkbench({
         <ComparisonOutputPanel
           side="left"
           modelLabel={leftLabel}
-          modelId={leftModel}
+          modelId={leftOutputModel}
           state={getPanelState(leftResponse)}
           streamStatus={leftResponse?.status}
           text={leftResponse?.response}
@@ -185,7 +205,7 @@ export function PlaygroundWorkbench({
         <ComparisonOutputPanel
           side="right"
           modelLabel={rightLabel}
-          modelId={rightModel}
+          modelId={rightOutputModel}
           state={getPanelState(rightResponse)}
           streamStatus={rightResponse?.status}
           text={rightResponse?.response}
@@ -199,6 +219,20 @@ export function PlaygroundWorkbench({
           searchCapability={rightResponse?.searchCapability}
         />
       </section>
+
+      <EvaluationSummary
+        leftLabel={leftLabel}
+        rightLabel={rightLabel}
+        leftResponse={leftResponse}
+        rightResponse={rightResponse}
+        divergenceScore={diff.divergenceScore}
+        sharedLines={diff.sharedLines}
+        totalLines={diff.totalLines}
+        isComparing={isComparing}
+        verdict={verdict}
+        onVerdictChange={onVerdictChange}
+        grounding={grounding}
+      />
     </div>
   );
 }

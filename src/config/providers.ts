@@ -3,7 +3,14 @@
  * Model lists come from GET /api/v1/models — see src/lib/model-registry.
  */
 
-export type ProviderId = "openai" | "google" | "anthropic" | "meta" | "custom";
+export type ProviderId =
+  | "openai"
+  | "google"
+  | "anthropic"
+  | "opencode-go"
+  | "opencode-zen"
+  | "meta"
+  | "custom";
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -82,6 +89,38 @@ export const PROVIDER_CONFIG: Record<ProviderId, ProviderConfig> = {
       validation: /^sk-ant-[a-zA-Z0-9]{20,}$/,
     },
   },
+  "opencode-go": {
+    id: "opencode-go",
+    label: "OpenCode Go",
+    description: "Go subscription models",
+    logo: "/logos/api.svg",
+    color: "from-[#5DE6FF] to-[#3B82F6]",
+    keyName: "opencodeKey",
+    docUrl: "https://opencode.ai/docs/go/",
+    status: "active",
+    website: "https://opencode.ai",
+    apiKeyFormat: {
+      prefix: "",
+      example: "OpenCode workspace key",
+      validation: /^\S{6,}$/,
+    },
+  },
+  "opencode-zen": {
+    id: "opencode-zen",
+    label: "OpenCode Zen",
+    description: "Zen pay-as-you-go models",
+    logo: "/logos/api.svg",
+    color: "from-[#A78BFA] to-[#5DE6FF]",
+    keyName: "opencodeKey",
+    docUrl: "https://opencode.ai/docs/zen/",
+    status: "active",
+    website: "https://opencode.ai",
+    apiKeyFormat: {
+      prefix: "",
+      example: "OpenCode workspace key",
+      validation: /^\S{6,}$/,
+    },
+  },
   meta: {
     id: "meta",
     label: "OpenRouter",
@@ -146,7 +185,7 @@ export const getActiveProviders = (): ProviderConfig[] =>
 export const validateApiKey = (providerId: ProviderId, apiKey: string): boolean => {
   const provider = PROVIDER_CONFIG[providerId];
   if (!provider?.apiKeyFormat) return false;
-  return provider.apiKeyFormat.validation.test(apiKey);
+  return provider.apiKeyFormat.validation.test(apiKey.trim());
 };
 
 export const getApiKeyExample = (providerId: ProviderId): string =>

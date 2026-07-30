@@ -73,6 +73,11 @@ def resolve_side(
     provider = (provider_hint or infer_provider_from_model(model_id)).lower()
     extras: dict = {}
 
+    if provider in {"opencode-go", "opencode-zen"}:
+        if not keys.opencode:
+            raise ValueError(f"No OpenCode API key for model '{model_id}'")
+        return provider, keys.opencode, model_id, extras
+
     if provider == "openai":
         if not keys.openai:
             raise ValueError(f"No OpenAI API key for model '{model_id}'")

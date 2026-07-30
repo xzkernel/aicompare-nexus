@@ -6,6 +6,8 @@ import {
   listComparisonSessions,
   subscribeSessions,
   toggleSessionPinned,
+  updateComparisonSessionVerdict,
+  type ComparisonVerdict,
   type ComparisonSession,
 } from "@/lib/session-store";
 
@@ -43,5 +45,7 @@ export function useComparisonSessions() {
     remove: (id: string) => void deleteComparisonSession(id).then(refresh),
     clearAll: () => void clearComparisonSessions().then(refresh),
     togglePin: (id: string) => void toggleSessionPinned(id).then(refresh),
+    updateVerdict: (id: string, verdict: ComparisonVerdict | undefined) =>
+      void updateComparisonSessionVerdict(id, verdict).then(refresh),
   };
 }

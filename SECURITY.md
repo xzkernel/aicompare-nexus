@@ -8,8 +8,9 @@
 
 ## Reporting a Vulnerability
 
-ModelWise is a BYOK (Bring Your Own Key) platform — your API keys never touch our servers.
-We take security seriously regardless.
+ModelWise is a BYOK (Bring Your Own Key) platform. Active keys are memory-only by default, but they transit the configured ModelWise backend in request headers so it can call external providers. The backend does not intentionally persist provider keys.
+
+Optional password-protected vault and export features encrypt keys in the browser. Prompts and model responses transit the backend and external providers and are not end-to-end encrypted from the browser to the provider.
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 

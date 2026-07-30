@@ -5,22 +5,25 @@ Live OpenRouter list is merged on every request (short server cache).
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
-import os
 import time
+import weakref
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 import httpx
 
 from registry.catalog import FRONTIER_CATALOG, PROVIDER_META
 from registry.legacy import is_legacy_model_id
+from providers.opencode import OPENCODE_ROOTS, is_supported_live_model
 
 logger = logging.getLogger(__name__)
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_HYDRATE_LIMIT = 200
+OPENCODE_HYDRATE_LIMIT = 200
 REGISTRY_CACHE_TTL_SEC = 45
 
 # Prefer recent frontier slugs when merging OpenRouter
@@ -45,6 +48,27 @@ _OR_PREFIX_TO_PROVIDER: Dict[str, str] = {
 }
 
 _registry_cache: Dict[str, Any] = {"at": 0.0, "key": "", "payload": None}
+_registry_cache_locks: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _get_registry_cache_lock() -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    lock = _registry_cache_locks.get(loop)
+    if lock is None:
+        lock = asyncio.Lock()
+        _registry_cache_locks[loop] = lock
+    return lock
+
+
+def _is_free_model(provider: str, model_id: str) -> bool:
+    normalized = model_id.lower()
+    return (
+        normalized.endswith("-free")
+        or normalized.endswith(":free")
+        or (provider == "opencode-zen" and normalized == "big-pickle")
+    )
 
 
 def _openrouter_relevance(or_id: str, name: str) -> int:
@@ -98,8 +122,8 @@ def _provider_from_or_id(or_id: str) -> Tuple[str, str]:
 
 
 def _merge_models(*sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    seen_ids: Set[str] = set()
-    seen_or: Set[str] = set()
+    seen_ids: Set[Tuple[str, str]] = set()
+    seen_or: Set[Tuple[str, str]] = set()
     merged: List[Dict[str, Any]] = []
 
     for batch in sources:
@@ -109,10 +133,13 @@ def _merge_models(*sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             or_id = entry.get("openRouterId") or mid
             if is_legacy_model_id(mid) or is_legacy_model_id(str(or_id)):
                 continue
-            if mid in seen_ids or or_id in seen_or:
+            provider_key = str(entry["provider"])
+            id_key = (provider_key, str(mid))
+            or_key = (provider_key, str(or_id))
+            if id_key in seen_ids or or_key in seen_or:
                 continue
-            seen_ids.add(mid)
-            seen_or.add(or_id)
+            seen_ids.add(id_key)
+            seen_or.add(or_key)
             merged.append(entry)
 
     merged.sort(
@@ -131,7 +158,15 @@ def _group_by_provider(models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         pid = m["provider"]
         groups.setdefault(pid, []).append(m)
 
-    order = ["openai", "google", "anthropic", "meta", "custom"]
+    order = [
+        "openai",
+        "google",
+        "anthropic",
+        "opencode-go",
+        "opencode-zen",
+        "meta",
+        "custom",
+    ]
     result = []
     for pid in order:
         if pid not in groups:
@@ -170,13 +205,19 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
             response = await client.get(OPENROUTER_MODELS_URL)
             response.raise_for_status()
             data = response.json()
-    except Exception as e:
-        logger.warning("OpenRouter model hydration failed: %s", e)
+    except Exception:
+        logger.warning("OpenRouter model hydration failed")
         return extra
 
-    catalog_ids = {m["id"] for m in FRONTIER_CATALOG}
+    # OpenCode intentionally exposes IDs also available through direct providers
+    # and OpenRouter; do not let those provider-qualified duplicates suppress each other.
+    catalog_ids = {
+        m["id"] for m in FRONTIER_CATALOG if not m["provider"].startswith("opencode-")
+    }
     catalog_or = {
-        m.get("openRouterId") or m["id"] for m in FRONTIER_CATALOG if m.get("openRouterId")
+        m.get("openRouterId") or m["id"]
+        for m in FRONTIER_CATALOG
+        if not m["provider"].startswith("opencode-") and m.get("openRouterId")
     }
 
     candidates = [
@@ -202,13 +243,6 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
 
         provider, internal_id = _provider_from_or_id(or_id)
         name = item.get("name") or internal_id
-        pricing = item.get("pricing") or {}
-        is_free = (
-            str(pricing.get("prompt", "1")) == "0"
-            and str(pricing.get("completion", "1")) == "0"
-        )
-        hay = f"{or_id} {name}".lower()
-
         extra.append(
             {
                 "id": internal_id,
@@ -216,13 +250,10 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
                 "provider": provider,
                 "supportsStreaming": True,
                 "contextWindow": str(item.get("context_length") or "—"),
-                "multimodal": any(x in hay for x in ("vision", "multimodal", "image")),
-                "reasoning": any(x in hay for x in ("r1", "reasoning", "think", "o3", "o4")),
-                "freeTier": is_free,
-                "openSource": any(
-                    x in or_id.lower()
-                    for x in ("llama", "qwen", "gemma", "deepseek", "mistral")
-                ),
+                "multimodal": False,
+                "reasoning": False,
+                "freeTier": _is_free_model(provider, or_id),
+                "openSource": False,
                 "relaySupported": True,
                 "openRouterId": or_id,
                 "typicalLatency": "~2.0s",
@@ -233,11 +264,77 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
     return extra
 
 
-async def build_registry(openrouter_api_key: Optional[str] = None) -> Dict[str, Any]:
-    # API key reserved for future authenticated OR endpoints; list is public today.
-    _ = openrouter_api_key or os.getenv("OPENROUTER_API_KEY")
-    cache_key = "live"
-    now = time.monotonic()
+def _readable_model_name(model_id: str) -> str:
+    brands = {
+        "gpt": "GPT",
+        "glm": "GLM",
+        "hy3": "HY3",
+        "kimi": "Kimi",
+        "mimo": "MiMo",
+        "qwen": "Qwen",
+        "claude": "Claude",
+        "gemini": "Gemini",
+        "deepseek": "DeepSeek",
+        "minimax": "MiniMax",
+        "grok": "Grok",
+    }
+    words = model_id.replace("/", " ").replace("_", " ").replace("-", " ").split()
+    return " ".join(brands.get(word.lower(), word.title()) for word in words)
+
+
+async def _fetch_opencode_models(provider: str) -> List[Dict[str, Any]]:
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(f"{OPENCODE_ROOTS[provider]}/models")
+            response.raise_for_status()
+            payload = response.json()
+    except Exception:
+        logger.warning("%s model hydration failed", provider)
+        return []
+
+    raw_models = payload.get("data", payload.get("models", [])) if isinstance(payload, dict) else []
+    if not isinstance(raw_models, list):
+        return []
+    hydrated: List[Dict[str, Any]] = []
+    omitted_ids: List[str] = []
+    for raw in raw_models[:OPENCODE_HYDRATE_LIMIT]:
+        if not isinstance(raw, (str, dict)):
+            continue
+        model_id = raw if isinstance(raw, str) else raw.get("id")
+        if not isinstance(model_id, str):
+            continue
+        if not is_supported_live_model(provider, model_id):
+            omitted_ids.append(model_id)
+            continue
+        name = raw.get("name") if isinstance(raw, dict) else None
+        hydrated.append(
+            {
+                "id": model_id,
+                "name": name or _readable_model_name(model_id),
+                "provider": provider,
+                "supportsStreaming": True,
+                "contextWindow": str(raw.get("context_length") or "—") if isinstance(raw, dict) else "—",
+                "multimodal": False,
+                "reasoning": False,
+                "freeTier": _is_free_model(provider, model_id),
+                "openSource": False,
+                "relaySupported": False,
+                "supportsWebSearch": False,
+                "typicalLatency": "~2.0s",
+                "source": "opencode",
+            }
+        )
+    if omitted_ids:
+        logger.debug(
+            "%s omitted unsupported models: count=%d ids=%s",
+            provider,
+            len(omitted_ids),
+            ",".join(omitted_ids),
+        )
+    return hydrated
+
+
+def _cached_registry(cache_key: str, now: float) -> Dict[str, Any] | None:
     cached = _registry_cache.get("payload")
     if (
         cached
@@ -245,27 +342,46 @@ async def build_registry(openrouter_api_key: Optional[str] = None) -> Dict[str, 
         and _registry_cache.get("key") == cache_key
     ):
         return cached
+    return None
 
-    catalog = [
-        dict(m, source="catalog")
-        for m in FRONTIER_CATALOG
-        if not is_legacy_model_id(m["id"])
-    ]
-    live = await _fetch_openrouter_models()
-    models = _merge_models(catalog, live)
 
-    payload = {
-        "version": "2",
-        "updatedAt": datetime.now(timezone.utc).isoformat(),
-        "streaming": True,
-        "byok": True,
-        "openRouterHydrated": bool(live),
-        "liveSync": True,
-        "fingerprint": _fingerprint(models),
-        "providers": _group_by_provider(models),
-        "modelCount": len(models),
-    }
-    _registry_cache["at"] = now
-    _registry_cache["key"] = cache_key
-    _registry_cache["payload"] = payload
-    return payload
+async def build_registry() -> Dict[str, Any]:
+    cache_key = "live"
+    cached = _cached_registry(cache_key, time.monotonic())
+    if cached:
+        return cached
+
+    async with _get_registry_cache_lock():
+        cached = _cached_registry(cache_key, time.monotonic())
+        if cached:
+            return cached
+
+        catalog = [
+            dict(m, source=m.get("source", "catalog"))
+            for m in FRONTIER_CATALOG
+            if not is_legacy_model_id(m["id"])
+        ]
+        live, go_live, zen_live = await asyncio.gather(
+            _fetch_openrouter_models(),
+            _fetch_opencode_models("opencode-go"),
+            _fetch_opencode_models("opencode-zen"),
+        )
+        models = _merge_models(catalog, live, go_live, zen_live)
+
+        payload = {
+            "version": "3",
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "streaming": True,
+            "byok": True,
+            "openRouterHydrated": bool(live),
+            "openCodeGoHydrated": bool(go_live),
+            "openCodeZenHydrated": bool(zen_live),
+            "liveSync": True,
+            "fingerprint": _fingerprint(models),
+            "providers": _group_by_provider(models),
+            "modelCount": len(models),
+        }
+        _registry_cache["at"] = time.monotonic()
+        _registry_cache["key"] = cache_key
+        _registry_cache["payload"] = payload
+        return payload

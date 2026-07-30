@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { KeyRound, Shield, Globe, HardDrive, Activity } from "lucide-react";
-import { useSecureApiKeys, hasPersistedKeys } from "@/lib/secure-api-keys";
+import { useSecureApiKeys } from "@/lib/secure-api-keys";
 import { cn } from "@/lib/utils";
 
 type ByokInfrastructurePanelProps = {
@@ -10,12 +10,12 @@ type ByokInfrastructurePanelProps = {
 export function ByokInfrastructurePanel({ collapsed }: ByokInfrastructurePanelProps) {
   const { getApiKeyStatus } = useSecureApiKeys();
   const status = getApiKeyStatus();
-  const persisted = hasPersistedKeys();
-
-  const connectedCount = [
+  const routesConfiguredCount = [
     status.openaiValid,
     status.googleValid,
     status.anthropicValid,
+    status.opencodeValid,
+    status.opencodeValid,
     status.metaValid,
     status.customValid,
   ].filter(Boolean).length;
@@ -41,15 +41,11 @@ export function ByokInfrastructurePanel({ collapsed }: ByokInfrastructurePanelPr
     <div className="mx-3 mb-4 space-y-2 border-t border-stroke-subtle pt-3">
       <InfraHeader ready={status.hasValidKeys} />
       <div className="space-y-2 rounded-md border border-stroke-subtle bg-bg-paper/40 p-2.5">
-        <InfraRow icon={KeyRound} label="Providers" value={`${connectedCount} connected`} />
-        <InfraRow icon={Activity} label="Routing" value="Direct + relay" />
-        <InfraRow
-          icon={HardDrive}
-          label="Key storage"
-          value={persisted ? "Browser local" : status.hasValidKeys ? "Session only" : "None"}
-        />
-        <InfraRow icon={Shield} label="Requests" value="Never stored" />
-        <InfraRow icon={Globe} label="Region" value="Client-side" />
+        <InfraRow icon={KeyRound} label="Routes" value={`${routesConfiguredCount} configured`} />
+        <InfraRow icon={Activity} label="Routing" value="Via backend" />
+        <InfraRow icon={HardDrive} label="Key storage" value={status.hasValidKeys ? "Memory only" : "None active"} />
+        <InfraRow icon={Shield} label="Requests" value="Backend transit" />
+        <InfraRow icon={Globe} label="Region" value="Backend-defined" />
       </div>
       <Link
         to="/settings"
@@ -72,7 +68,7 @@ function InfraHeader({ ready }: { ready: boolean }) {
             ready ? "bg-accent-cyan animate-pulse-signal" : "bg-text-muted"
           )}
         />
-        <span className="font-mono text-[10px] text-text-muted">{ready ? "Ready" : "No keys"}</span>
+        <span className="font-mono text-[10px] text-text-muted">{ready ? "Key present" : "No keys"}</span>
       </span>
     </div>
   );

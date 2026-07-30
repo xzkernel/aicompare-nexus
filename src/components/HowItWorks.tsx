@@ -16,7 +16,7 @@ const STEPS = [
   {
     n: "02",
     title: "Select Models",
-    body: "Toggle between OpenAI, Anthropic, Gemini, or local Llama instances.",
+    body: "Choose text models from OpenAI, Anthropic, Google, OpenCode, relays, or a custom HTTPS endpoint.",
     side: "right" as const,
   },
   {

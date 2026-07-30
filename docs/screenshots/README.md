@@ -22,7 +22,6 @@ MW_BASE_URL=http://127.0.0.1:8080 npm run screenshots
 | File | Route | Notes |
 |------|-------|-------|
 | `playground.png` | `/playground` | Workbench + model slots |
-| `dashboard.png` | `/dashboard` | Registry metadata table |
 | `settings.png` | `/settings` | BYOK provider keys |
 | `registry.png` | `/playground` | Model picker open |
 

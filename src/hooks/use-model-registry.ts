@@ -20,10 +20,6 @@ import {
 
 import type { NormalizedRegistry, RegistryFilters } from "@/types/registry";
 
-import { useSecureApiKeys } from "@/lib/secure-api-keys";
-
-
-
 function getRegistrySnapshot(): NormalizedRegistry | null {
 
   return getCachedRegistry();
@@ -34,15 +30,11 @@ function getRegistrySnapshot(): NormalizedRegistry | null {
 
 export function useModelRegistry(
 
-  profileId = "default",
+  _profileId = "default",
 
   filters: RegistryFilters = {}
 
 ) {
-
-  const { getApiKey } = useSecureApiKeys(profileId);
-
-
 
   const registry = useSyncExternalStore(
 
@@ -58,11 +50,9 @@ export function useModelRegistry(
 
   const reload = useCallback(async () => {
 
-    const metaKey = getApiKey("meta");
+    await fetchModelRegistry(true);
 
-    await fetchModelRegistry(metaKey, true);
-
-  }, [getApiKey]);
+  }, []);
 
 
 
@@ -70,13 +60,11 @@ export function useModelRegistry(
 
     let cancelled = false;
 
-    const metaKey = getApiKey("meta");
-
     const shouldForce = getRegistryCacheAgeMs() > REGISTRY_REVALIDATE_MS;
 
 
 
-    void fetchModelRegistry(metaKey, shouldForce).then(() => {
+    void fetchModelRegistry(shouldForce).then(() => {
 
       if (cancelled) return;
 
@@ -90,7 +78,7 @@ export function useModelRegistry(
 
     };
 
-  }, [getApiKey]);
+  }, []);
 
 
 
@@ -106,7 +94,7 @@ export function useModelRegistry(
 
     return applyRegistryFilters(registry.options, filters);
 
-  }, [registry, filters.freeOnly, filters.streamingOnly, filters.ossOnly]);
+  }, [registry, filters]);
 
 
 

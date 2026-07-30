@@ -22,8 +22,6 @@ Set Railway environment variables:
 ENVIRONMENT=production
 ENABLE_API_DOCS=false
 CORS_ORIGINS=https://your-vercel-app.vercel.app
-# Optional, only for OpenRouter catalog hydration:
-# OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
 Railway provides `PORT` automatically. The backend Dockerfile uses `${PORT:-8001}`.
@@ -51,9 +49,6 @@ Set Vercel environment variables:
 
 ```env
 VITE_API_URL=https://your-backend.up.railway.app
-# Optional Supabase cloud sync/auth:
-# VITE_SUPABASE_URL=https://your-project.supabase.co
-# VITE_SUPABASE_ANON_KEY=...
 ```
 
 `vercel.json` rewrites non-API routes to `index.html` for React Router. API calls use `VITE_API_URL`, so `/api` is not handled by Vercel.
@@ -112,4 +107,4 @@ In production:
 - Use HTTPS for both frontend and backend.
 - Set `CORS_ORIGINS` to exact frontend origins, not `*`.
 - Keep `ENABLE_API_DOCS=false` unless you intentionally expose docs.
-- Add Supabase variables only if you use optional auth/cloud sync.
+- Keep sessions and preferences device-local; use export/import for manual backup.

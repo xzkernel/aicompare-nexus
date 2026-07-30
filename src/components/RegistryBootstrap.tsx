@@ -4,27 +4,23 @@ import {
   invalidateModelRegistry,
   REGISTRY_POLL_MS,
 } from "@/lib/model-registry";
-import { useSecureApiKeys } from "@/lib/secure-api-keys";
 
 /** Keep registry synced with OpenRouter via backend (poll + focus refresh). */
 export function RegistryBootstrap() {
-  const { getApiKey } = useSecureApiKeys();
-
   useEffect(() => {
     invalidateModelRegistry();
-    const metaKey = getApiKey("meta");
-    void fetchModelRegistry(metaKey, true);
+    void fetchModelRegistry(true);
 
     const poll = window.setInterval(() => {
-      void fetchModelRegistry(getApiKey("meta"), true);
+      void fetchModelRegistry(true);
     }, REGISTRY_POLL_MS);
 
     const onFocus = () => {
-      void fetchModelRegistry(getApiKey("meta"), true);
+      void fetchModelRegistry(true);
     };
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        void fetchModelRegistry(getApiKey("meta"), true);
+        void fetchModelRegistry(true);
       }
     };
 
@@ -36,7 +32,7 @@ export function RegistryBootstrap() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [getApiKey]);
+  }, []);
 
   return null;
 }

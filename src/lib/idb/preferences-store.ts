@@ -2,7 +2,6 @@ import type { AppLocale } from "@/i18n";
 import { ENTITY_SCHEMA_VERSION } from "@/types/sync";
 import { getDeviceId } from "./device-id";
 import { getLocalDb, notifyLocalDbChange } from "./db";
-import { enqueueSync } from "./sync-queue";
 
 export const PREFERENCES_ID = "default";
 
@@ -49,9 +48,6 @@ export async function patchPreferencesRecord(
     deviceId: getDeviceId(),
   };
   await db.put("preferences", next);
-  if (!options?.skipSync) {
-    await enqueueSync("preferences", PREFERENCES_ID, "upsert");
-  }
   notifyLocalDbChange();
   return next;
 }

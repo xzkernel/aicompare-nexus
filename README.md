@@ -2,7 +2,7 @@
 
 **Open-source real-time frontier AI evaluation workbench.**
 
-Compare two models side-by-side with live SSE streaming, divergence analysis, and BYOK provider routing — self-hosted, local-first, no hosted inference layer.
+Compare two text-model routes side-by-side with SSE streaming, divergence analysis, and BYOK provider routing through a configurable ModelWise backend.
 
 **Live demo:** [aicompare-nexus.vercel.app](https://aicompare-nexus.vercel.app) · **Repository:** [github.com/Archiixyz/aicompare-nexus](https://github.com/Archiixyz/aicompare-nexus)
 
@@ -12,9 +12,10 @@ Compare two models side-by-side with live SSE streaming, divergence analysis, an
 
 ## Privacy & security (BYOK)
 
-- **Your API keys stay in the browser** — they are sent directly to the backend as request headers for compare/stream calls and are **never stored server-side**.
-- **Sessions and preferences** are saved locally in IndexedDB unless you optionally enable Supabase cloud sync.
-- **No account required** to compare models. Sign-in is optional and only for multi-device session backup.
+- **API keys are memory-only by default** and transit the configured ModelWise backend in request headers. The backend does not intentionally persist them.
+- **Encrypted persistence is explicit** through a password-protected IndexedDB device vault or encrypted export.
+- **Completed comparisons are saved locally** in browser IndexedDB and never cloud-synced.
+- **No account system** — the shipped app is local-only.
 - Details: [docs/PRIVACY.md](./docs/PRIVACY.md)
 
 ---
@@ -23,10 +24,10 @@ Compare two models side-by-side with live SSE streaming, divergence analysis, an
 
 - **Real-time streaming compare** — dual-panel SSE token streaming via `POST /api/v1/stream`
 - **Live divergence analysis** — debounced diff while tokens arrive
-- **BYOK architecture** — API keys stay in your browser; backend forwards, never stores keys
+- **BYOK architecture** — active keys live in browser memory and transit the backend per compare request; the backend does not intentionally persist them
 - **OpenRouter support** — optional relay for OSS and frontier models
 - **Dynamic model registry** — `GET /api/v1/models` with capability metadata
-- **Local session persistence** — comparison history in browser storage
+- **Local session persistence** — comparison history auto-save in browser IndexedDB
 - **Self-hostable** — Vite + FastAPI, Docker optional
 - **Multilingual UI** — English, French, Arabic (RTL)
 - **Provider abstraction** — OpenAI, Google, Anthropic, OpenRouter relay, custom HTTP
@@ -35,13 +36,16 @@ Compare two models side-by-side with live SSE streaming, divergence analysis, an
 
 ## Supported Providers
 
-| Provider | Streaming | Relay fallback | Vision | Notes |
-|----------|-----------|----------------|--------|-------|
-| **OpenAI** | Yes | OpenRouter | Yes | GPT-4o, GPT-4o Mini |
-| **Google** | Yes | OpenRouter | Yes | Gemini 2.5 Pro / Flash |
-| **Anthropic** | Yes | OpenRouter | Yes | Claude Sonnet 4, Opus 4 |
-| **OpenRouter** | Yes | — | Varies | DeepSeek R1, Llama 4, Qwen 3, Gemma 3 |
-| **Custom HTTP** | Yes | — | Varies | OpenAI-compatible endpoint |
+| Provider | Streaming | Relay fallback | Frontend request path | Notes |
+|----------|-----------|----------------|-----------------------|-------|
+| **OpenAI** | Yes | OpenRouter | Text only | GPT-5.5 family |
+| **Google** | Yes | OpenRouter | Text only | Gemini 3.1 / 3.5 family |
+| **Anthropic** | Yes | OpenRouter | Text only | Claude Opus 4.8 / Sonnet 4.6 |
+| **OpenCode Go / Zen** | Yes | — | Text only | Shared workspace key, two routes |
+| **OpenRouter** | Yes | — | Text only | Catalog varies by backend registry |
+| **Custom HTTP** | Yes | — | Text only | OpenAI-compatible HTTPS endpoint |
+
+Registry metadata may report multimodal model capability, but the current compare request path sends text prompts only.
 
 Model list is dynamic — see [Model Registry](./docs/REGISTRY.md).
 
@@ -54,7 +58,7 @@ Model list is dynamic — see [Model Registry](./docs/REGISTRY.md).
 │  Browser (React + Vite)                                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │ Playground   │  │ Model        │  │ Session store    │  │
-│  │ (SSE client) │  │ Registry     │  │ (localStorage)   │  │
+│  │ (SSE client) │  │ Registry     │  │ (IndexedDB)      │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────────────────┘  │
 │         │ BYOK headers     │ GET /api/v1/models              │
 └─────────┼──────────────────┼────────────────────────────────┘
@@ -64,7 +68,7 @@ Model list is dynamic — see [Model Registry](./docs/REGISTRY.md).
 │  FastAPI backend (:8001)                                    │
 │  routes/stream · routes/compare · routes/models             │
 │  services/stream_service · registry_service                   │
-│  providers/ (openai, google, anthropic, meta, custom)         │
+│  providers/ (OpenAI, Google, Anthropic, OpenCode, relays)     │
 └─────────┬───────────────────────────────────────────────────┘
           │
           ▼
@@ -104,7 +108,7 @@ cd ..
 
 ```bash
 cp backend/env.env.example backend/env.env
-# Edit backend/env.env — only needed for OpenRouter catalog merge or optional auth
+# Edit backend/env.env only if you need backend configuration overrides
 ```
 
 ### 3. Run
@@ -134,13 +138,15 @@ Open **http://localhost:8080**
 
 ### 4. Add API keys
 
-1. Open **Settings → Providers**
-2. Paste your keys (OpenAI, Google, Anthropic, and/or OpenRouter)
+1. Open **Settings → API Keys**
+2. Paste your keys (OpenAI, Google, Anthropic, OpenCode, and/or OpenRouter)
 3. Go to **Playground** and run a compare
 
-**Gemini quickstart:** Get a key at [Google AI Studio](https://aistudio.google.com/apikey), add under **Google**, select `Gemini 2.5 Flash` or `Gemini 2.5 Pro`.
+**Gemini quickstart:** Get a key at [Google AI Studio](https://aistudio.google.com/apikey), add it under **Google**, then select `Gemini 3.5 Flash` or `Gemini 3.1 Pro`.
 
-**OpenRouter (optional):** Get a key at [openrouter.ai](https://openrouter.ai), add under **OpenRouter**. Enables OSS models and expands the registry when `OPENROUTER_API_KEY` is set on the backend.
+**OpenCode:** Add one OpenCode workspace key to use both Go subscription and Zen pay-as-you-go model routes.
+
+**OpenRouter (optional):** Get a key at [openrouter.ai](https://openrouter.ai), then add it under **OpenRouter** for OSS and relay models.
 
 ---
 
@@ -152,8 +158,6 @@ Open **http://localhost:8080**
 |----------|----------|-------------|
 | `PORT` | No | Default `8001` |
 | `CORS_ORIGINS` | No | Comma-separated frontend origins |
-| `OPENROUTER_API_KEY` | No | Server-side OpenRouter catalog hydration |
-| `SUPABASE_*` / `DATABASE_URL` | No | Optional auth stack (BYOK path works without) |
 
 See [backend/env.env.example](./backend/env.env.example).
 
@@ -166,8 +170,6 @@ For production (Vercel + Railway split deploy), set:
 | Variable | Description |
 |----------|-------------|
 | `VITE_API_URL` | Public Railway backend URL (no trailing slash) |
-| `VITE_SUPABASE_URL` | Optional — cloud sync |
-| `VITE_SUPABASE_ANON_KEY` | Optional — cloud sync |
 
 See [DEPLOY.md](./DEPLOY.md) and [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
 
@@ -182,7 +184,7 @@ POST /api/v1/stream
 X-OpenAI-API-Key: sk-...
 X-Google-API-Key: AIza...
 
-{"prompt":"...","leftModel":"gpt-4o","rightModel":"gemini-2.5-flash"}
+{"prompt":"...","leftModel":"gpt-5.5","rightModel":"gemini-3.5-flash"}
 ```
 
 Events: `start` → `token`* → `done` | `error` → `complete`
@@ -195,7 +197,7 @@ Full contract: [docs/STREAMING.md](./docs/STREAMING.md)
 
 The UI hydrates models from **`GET /api/v1/models`** — not hardcoded dropdowns.
 
-Each model exposes: streaming, context window, vision, reasoning, OSS, free-tier, and relay metadata. Optional OpenRouter merge when a key is configured.
+Each model exposes capability metadata including streaming, context window, multimodal support, reasoning, OSS, free-tier, and relay support. Browser registry GETs do not include provider keys; any OpenRouter merge uses backend configuration.
 
 Details: [docs/REGISTRY.md](./docs/REGISTRY.md)
 
@@ -203,13 +205,9 @@ Details: [docs/REGISTRY.md](./docs/REGISTRY.md)
 
 ## Screenshots
 
-| Playground (streaming) | Dashboard |
-|------------------------|-----------|
-| ![Playground](./docs/screenshots/playground.png) | ![Dashboard](./docs/screenshots/dashboard.png) |
-
-| Model registry | Settings |
-|----------------|----------|
-| ![Registry](./docs/screenshots/registry.png) | ![Settings](./docs/screenshots/settings.png) |
+| Playground (streaming) | Model registry | Settings |
+|------------------------|----------------|----------|
+| ![Playground](./docs/screenshots/playground.png) | ![Registry](./docs/screenshots/registry.png) | ![Settings](./docs/screenshots/settings.png) |
 
 ---
 
@@ -227,13 +225,13 @@ See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md) and [DOCKER.md](./DOCKER.md).
 
 ## Documentation
 
-Optional cloud sync: sign in with GitHub or Google to backup sessions and prompts across devices. **Fully optional** — see [docs/CLOUD_SYNC.md](./docs/CLOUD_SYNC.md).
+Sessions, preferences, and encrypted key vaults remain in the current browser. Use session export/import for manual backup or transfer.
 
 | Doc | Topic |
 |-----|-------|
 | [DEPLOY.md](./DEPLOY.md) | Vercel + Railway production deploy |
-| [PRIVACY.md](./docs/PRIVACY.md) | BYOK, local data, optional sync |
-| [CLOUD_SYNC.md](./docs/CLOUD_SYNC.md) | Optional Supabase identity + sync |
+| [PRIVACY.md](./docs/PRIVACY.md) | BYOK and local data |
+| [CLOUD_SYNC.md](./docs/CLOUD_SYNC.md) | Local-only release status |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
 | [STREAMING.md](./docs/STREAMING.md) | SSE contract |
 | [REGISTRY.md](./docs/REGISTRY.md) | Model catalog |
@@ -247,7 +245,7 @@ Optional cloud sync: sign in with GitHub or Google to backup sessions and prompt
 
 Realistic next steps (not committed):
 
-- Live provider health probes on dashboard
+- Live provider health probes
 - Registry `lastVerified` timestamps
 - Cost estimates from registry pricing metadata
 - Dedicated benchmarks workspace
@@ -258,10 +256,10 @@ Out of scope: hosted inference, billing, teams, agents.
 
 ## Philosophy
 
-- **Local-first** — keys and sessions stay on your machine
+- **Local-first** — active keys default to memory; encrypted key persistence and IndexedDB session auto-save are explicit browser features
 - **BYOK** — you pay providers directly; ModelWise adds no inference markup
-- **No hosted inference layer** — we route; we don't run models
-- **No data collection** — no telemetry, no key storage server-side
+- **Routing, not inference** — the ModelWise backend forwards prompts and keys to configured external providers
+- **No intentional backend key persistence** — provider keys are handled per request and are never cloud-synced
 - **Focused tool** — evaluation workbench, not an agent platform or SaaS
 
 ---

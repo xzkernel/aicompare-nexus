@@ -5,6 +5,7 @@
 export type {
   ComparisonSessionRecord as ComparisonSession,
   ComparisonSessionInput,
+  ComparisonVerdict,
 } from "@/lib/idb/sessions-store";
 
 import {
@@ -16,8 +17,10 @@ import {
   putSessionRecord,
   softDeleteSessionRecord,
   toggleSessionPinnedRecord,
+  updateSessionVerdictRecord,
   type ComparisonSessionInput,
   type ComparisonSessionRecord,
+  type ComparisonVerdict,
 } from "@/lib/idb/sessions-store";
 import { initLocalDatabase, subscribeLocalDb } from "@/lib/idb/db";
 
@@ -58,6 +61,14 @@ export async function clearComparisonSessions(): Promise<void> {
 export async function toggleSessionPinned(id: string): Promise<void> {
   await ensureLocalDbReady();
   return toggleSessionPinnedRecord(id);
+}
+
+export async function updateComparisonSessionVerdict(
+  id: string,
+  verdict: ComparisonVerdict | undefined
+): Promise<ComparisonSessionRecord | undefined> {
+  await ensureLocalDbReady();
+  return updateSessionVerdictRecord(id, verdict);
 }
 
 export async function importComparisonSessions(

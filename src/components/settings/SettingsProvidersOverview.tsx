@@ -4,7 +4,15 @@ import { useModelRegistry } from "@/hooks/use-model-registry";
 import { cn } from "@/lib/utils";
 import type { ApiKeys } from "@/lib/secure-api-keys";
 
-const PROVIDER_IDS: ProviderId[] = ["openai", "google", "anthropic", "meta", "custom"];
+const PROVIDER_IDS: ProviderId[] = [
+  "openai",
+  "google",
+  "anthropic",
+  "opencode-go",
+  "opencode-zen",
+  "meta",
+  "custom",
+];
 
 type Props = {
   apiKeys: ApiKeys;
@@ -53,7 +61,7 @@ export function SettingsProvidersOverview({ apiKeys, validity }: Props) {
                     )}
                   >
                     <span className={cn("h-1.5 w-1.5 rounded-full", ok ? "bg-accent-cyan" : "bg-text-muted")} />
-                    {ok ? "connected" : "disconnected"}
+                    {ok ? "configured" : "missing"}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-text-secondary">{routing}</td>

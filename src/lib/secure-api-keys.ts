@@ -1,10 +1,12 @@
 import { useCallback, useState, useEffect, useSyncExternalStore } from 'react';
+import type { ProviderId } from '@/config/providers';
 
 // Updated interface with claudeProvider and googleProvider
 export interface ApiKeys {
   openaiKey: string;
   googleKey: string;
   anthropicKey: string;
+  opencodeKey: string;
   metaRelayKey: string;
   customApiKey: string;
   // Claude provider selection
@@ -25,6 +27,7 @@ export interface ApiKeyStatus {
   openaiValid: boolean;
   googleValid: boolean;
   anthropicValid: boolean;
+  opencodeValid: boolean;
   metaValid: boolean;
   customValid: boolean;
   missingKeys: string[];
@@ -36,14 +39,17 @@ export interface EncryptedKeyData {
   salt: string;
 }
 
-// Browser-local persistence (never sent to ModelWise backend)
+// Legacy plaintext storage prefix. Values are migrated to memory and removed on read.
 const STORAGE_PREFIX = 'modelwise-byok-keys-';
 const keyListeners = new Set<() => void>();
+const migratedProfiles = new Set<string>();
+const inMemoryProfiles = new Map<string, ApiKeys>();
 
 const emptyKeys = (): ApiKeys => ({
   openaiKey: '',
   googleKey: '',
   anthropicKey: '',
+  opencodeKey: '',
   metaRelayKey: '',
   customApiKey: '',
   metaRelayProvider: 'openrouter',
@@ -59,6 +65,7 @@ function ensureApiKeysStructure(keys: unknown): ApiKeys {
     openaiKey: k?.openaiKey || '',
     googleKey: k?.googleKey || '',
     anthropicKey: k?.anthropicKey || '',
+    opencodeKey: k?.opencodeKey || '',
     metaRelayKey: k?.metaRelayKey || '',
     customApiKey: k?.customApiKey || '',
     claudeProvider: k?.claudeProvider || 'anthropic',
@@ -71,27 +78,40 @@ function ensureApiKeysStructure(keys: unknown): ApiKeys {
   };
 }
 
-function loadKeysFromStorage(profileId: string): ApiKeys {
+function migrateLegacyKeys(profileId: string): ApiKeys {
+  const existing = inMemoryProfiles.get(profileId);
+  if (existing) return existing;
+  if (migratedProfiles.has(profileId)) return emptyKeys();
+
+  migratedProfiles.add(profileId);
+  let keys = emptyKeys();
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${profileId}`);
-    if (raw) return ensureApiKeysStructure(JSON.parse(raw));
+    if (raw) keys = ensureApiKeysStructure(JSON.parse(raw));
   } catch {
     /* ignore corrupt storage */
+  } finally {
+    removeLegacyKeysFromStorage();
   }
-  return emptyKeys();
-}
 
-function persistKeysToStorage(profileId: string, keys: ApiKeys): void {
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}${profileId}`, JSON.stringify(keys));
-  } catch {
-    /* quota / private mode */
-  }
+  inMemoryProfiles.set(profileId, keys);
+  return keys;
 }
 
 function removeKeysFromStorage(profileId: string): void {
   try {
     localStorage.removeItem(`${STORAGE_PREFIX}${profileId}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+function removeLegacyKeysFromStorage(): void {
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
+    }
   } catch {
     /* ignore */
   }
@@ -107,25 +127,17 @@ function emitKeysChange(): void {
 }
 
 let activeProfileId = 'default';
-let inMemoryKeys: ApiKeys = loadKeysFromStorage('default');
+let inMemoryKeys: ApiKeys = migrateLegacyKeys('default');
 
 function getKeysSnapshot(): ApiKeys {
   return inMemoryKeys;
 }
 
-function applyKeys(profileId: string, keys: ApiKeys, persist: boolean): void {
+function applyKeys(profileId: string, keys: ApiKeys): void {
   inMemoryKeys = ensureApiKeysStructure(keys);
   activeProfileId = profileId;
-  if (persist) persistKeysToStorage(profileId, inMemoryKeys);
+  inMemoryProfiles.set(profileId, inMemoryKeys);
   emitKeysChange();
-}
-
-export function hasPersistedKeys(profileId: string = 'default'): boolean {
-  try {
-    return localStorage.getItem(`${STORAGE_PREFIX}${profileId}`) != null;
-  } catch {
-    return false;
-  }
 }
 
 // WebCrypto utilities for encryption
@@ -252,6 +264,10 @@ class IndexedDBStorage {
     });
   }
 
+  static async hasEncryptedKeys(profileId: string): Promise<boolean> {
+    return (await this.loadEncryptedKeys(profileId)) !== null;
+  }
+
   static async deleteEncryptedKeys(profileId: string): Promise<void> {
     const db = await this.openDB();
     const transaction = db.transaction([this.STORE_NAME], 'readwrite');
@@ -274,7 +290,7 @@ class IndexedDBStorage {
       const request = store.getAll();
       
       request.onsuccess = () => {
-        const profiles = request.result.map((item: any) => item.id);
+        const profiles = request.result.map((item: { id: string }) => item.id);
         resolve(profiles);
       };
       request.onerror = () => reject(request.error);
@@ -282,11 +298,25 @@ class IndexedDBStorage {
   }
 }
 
+export async function hasPersistedKeys(profileId: string = 'default'): Promise<boolean> {
+  return IndexedDBStorage.hasEncryptedKeys(profileId);
+}
+
+function hasValidCustomBaseUrl(value: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 // Secure API key manager
 export function useSecureApiKeys(profileId: string = 'default') {
   useEffect(() => {
     if (profileId !== activeProfileId) {
-      applyKeys(profileId, loadKeysFromStorage(profileId), false);
+      applyKeys(profileId, migrateLegacyKeys(profileId));
     }
   }, [profileId]);
 
@@ -294,21 +324,25 @@ export function useSecureApiKeys(profileId: string = 'default') {
   const [isLoading, setIsLoading] = useState(false);
 
   // Validate API key format
-  const validateApiKey = useCallback((key: string | undefined, type: 'openai' | 'google' | 'anthropic' | 'meta' | 'custom'): boolean => {
+  const validateApiKey = useCallback((key: string | undefined, type: ProviderId): boolean => {
     if (!key || !key.trim()) return false;
+    const trimmedKey = key.trim();
     
     switch (type) {
       case 'openai':
-        return key.startsWith('sk-') && key.length > 20;
+        return trimmedKey.startsWith('sk-') && trimmedKey.length > 20;
       case 'google':
-        return key.startsWith('AIza') && key.length > 20;
+        return trimmedKey.startsWith('AIza') && trimmedKey.length > 20;
       case 'anthropic':
-        return key.startsWith('sk-ant-') && key.length > 20;
+        return trimmedKey.startsWith('sk-ant-') && trimmedKey.length > 20;
+      case 'opencode-go':
+      case 'opencode-zen':
+        return trimmedKey.length > 5 && !/\s/.test(trimmedKey);
       case 'meta':
         // OpenRouter sk-or-v1-… and other sk- relay keys
-        return (key.startsWith('sk-') || key.startsWith('sk-or-')) && key.length > 20;
+        return (trimmedKey.startsWith('sk-') || trimmedKey.startsWith('sk-or-')) && trimmedKey.length > 20;
       case 'custom':
-        return key.length > 5; // More lenient for custom APIs
+        return trimmedKey.length > 5; // More lenient for custom APIs
       default:
         return false;
     }
@@ -328,10 +362,13 @@ export function useSecureApiKeys(profileId: string = 'default') {
     const claudeProvider = apiKeys?.claudeProvider || 'anthropic';
     const anthropicValid = validateApiKey(apiKeys?.anthropicKey, 'anthropic') || 
       (claudeProvider === 'openrouter' && validateApiKey(apiKeys?.metaRelayKey, 'meta'));
+
+    const opencodeValid = validateApiKey(apiKeys?.opencodeKey, 'opencode-go');
     
     const metaValid = validateApiKey(apiKeys?.metaRelayKey, 'meta');
-    const customValid = validateApiKey(apiKeys?.customApiKey, 'custom');
-    const hasValidKeys = openaiValid || googleValid || anthropicValid || metaValid || customValid;
+    const customValid = validateApiKey(apiKeys?.customApiKey, 'custom') &&
+      hasValidCustomBaseUrl(apiKeys?.customApiConfig?.baseUrl);
+    const hasValidKeys = openaiValid || googleValid || anthropicValid || opencodeValid || metaValid || customValid;
     
     // Provider validation completed
     
@@ -339,6 +376,7 @@ export function useSecureApiKeys(profileId: string = 'default') {
     if (!openaiValid) missingKeys.push('OpenAI');
     if (!googleValid) missingKeys.push('Google');
     if (!anthropicValid) missingKeys.push('Anthropic');
+    if (!opencodeValid) missingKeys.push('OpenCode');
     if (!metaValid) missingKeys.push('Meta');
     if (!customValid) missingKeys.push('Custom');
     
@@ -347,6 +385,7 @@ export function useSecureApiKeys(profileId: string = 'default') {
       openaiValid,
       googleValid,
       anthropicValid,
+      opencodeValid,
       metaValid,
       customValid,
       missingKeys
@@ -354,33 +393,38 @@ export function useSecureApiKeys(profileId: string = 'default') {
   }, [apiKeys, validateApiKey]);
 
   // Get API key for a specific provider
-  const getApiKey = useCallback((provider: 'openai' | 'google' | 'anthropic' | 'meta' | 'custom'): string | null => {
+  const getApiKey = useCallback((provider: ProviderId): string | null => {
     if (!apiKeys) return null;
+    if (provider === 'custom' && !hasValidCustomBaseUrl(apiKeys.customApiConfig?.baseUrl)) {
+      return null;
+    }
     
     const keyMap = {
       openai: apiKeys.openaiKey,
       google: apiKeys.googleKey,
       anthropic: apiKeys.anthropicKey,
+      'opencode-go': apiKeys.opencodeKey,
+      'opencode-zen': apiKeys.opencodeKey,
       meta: apiKeys.metaRelayKey,
       custom: apiKeys.customApiKey
     };
     const key = keyMap[provider];
-    return validateApiKey(key, provider) ? (key || '') : null;
+    return validateApiKey(key, provider) ? key.trim() : null;
   }, [apiKeys, validateApiKey]);
 
   const setApiKeys = useCallback((keys: ApiKeys) => {
-    applyKeys(profileId, keys, true);
+    applyKeys(profileId, keys);
   }, [profileId]);
 
   // Clear API keys
   const clearApiKeys = useCallback(() => {
     removeKeysFromStorage(profileId);
-    applyKeys(profileId, emptyKeys(), false);
+    applyKeys(profileId, emptyKeys());
   }, [profileId]);
 
   // Export keys to encrypted file
   const exportKeys = useCallback(async (password: string): Promise<void> => {
-    if (!apiKeys.openaiKey && !apiKeys.googleKey && !apiKeys.anthropicKey && !apiKeys.metaRelayKey && !apiKeys.customApiKey) {
+    if (!apiKeys.openaiKey && !apiKeys.googleKey && !apiKeys.anthropicKey && !apiKeys.opencodeKey && !apiKeys.metaRelayKey && !apiKeys.customApiKey) {
       throw new Error('No API keys to export');
     }
 
@@ -421,7 +465,7 @@ export function useSecureApiKeys(profileId: string = 'default') {
 
   // Save keys to IndexedDB (encrypted)
   const saveKeysToIndexedDB = useCallback(async (password: string): Promise<void> => {
-    if (!apiKeys.openaiKey && !apiKeys.googleKey && !apiKeys.anthropicKey && !apiKeys.metaRelayKey && !apiKeys.customApiKey) {
+    if (!apiKeys.openaiKey && !apiKeys.googleKey && !apiKeys.anthropicKey && !apiKeys.opencodeKey && !apiKeys.metaRelayKey && !apiKeys.customApiKey) {
       throw new Error('No API keys to save');
     }
 
@@ -463,10 +507,22 @@ export function useSecureApiKeys(profileId: string = 'default') {
 
   // Redact keys from error messages
   const redactKeys = useCallback((message: string): string => {
-    return message
+    const configuredKeys = [
+      apiKeys.openaiKey,
+      apiKeys.googleKey,
+      apiKeys.anthropicKey,
+      apiKeys.opencodeKey,
+      apiKeys.metaRelayKey,
+      apiKeys.customApiKey,
+    ].map((key) => key.trim()).filter(Boolean);
+
+    return configuredKeys.reduce(
+      (redacted, key) => redacted.split(key).join('[REDACTED]'),
+      message
+    )
       .replace(/sk-(?:proj-|svcacct-|admin-|ant-api\d{2}-|or-v\d+-)?[a-zA-Z0-9\-_]{20,}/g, 'sk-***REDACTED***')
       .replace(/AIza[a-zA-Z0-9\-_]{20,}/g, 'AIza***REDACTED***');
-  }, []);
+  }, [apiKeys]);
 
   return {
     apiKeys,

@@ -6,22 +6,16 @@
     "ar": "العربية"
   },
   "nav": {
-    "dashboard": "Tableau de bord",
     "playground": "Terrain de jeu",
     "sessions": "Sessions",
-    "benchmarks": "Benchmarks",
     "providers": "Fournisseurs",
     "settings": "Paramètres",
-    "workspace": "Espace de travail",
-    "newWorkspace": "Nouvel espace",
     "docs": "Documentation",
     "support": "Support",
     "compare": "Comparer",
     "quickstart": "Démarrage rapide",
     "github": "GitHub",
-    "signIn": "Connexion",
     "getStarted": "Commencer",
-    "byokActive": "BYOK ACTIF",
     "openNav": "Ouvrir la navigation"
   },
   "footer": {
@@ -29,23 +23,22 @@
     "app": "Application",
     "project": "Projet",
     "selfHosting": "Auto-hébergement",
+    "privacy": "Confidentialité",
+    "security": "Sécurité",
     "rights": "Tous droits réservés."
   },
   "settings": {
     "controlCenter": "Centre de contrôle",
-    "subtitle": "Infrastructure et gestion d'authentification",
-    "providersConnected": "{{count}} fournisseur connecté",
-    "providersConnected_plural": "{{count}} fournisseurs connectés",
-    "ready": "PRÊT",
+    "subtitle": "Gestion de l'infrastructure locale",
+    "routesConfigured": "{{count}} route configurée",
+    "routesConfigured_plural": "{{count}} routes configurées",
+    "keyPresent": "CLÉ PRÉSENTE",
     "keysRequired": "CLÉS REQUISES",
     "sections": {
-      "profiles": { "label": "Profils", "description": "Profils de clés" },
-      "providers": { "label": "Fournisseurs", "description": "Vue d'ensemble des connexions" },
+      "providers": { "label": "Fournisseurs", "description": "Vue d'ensemble de la configuration" },
       "api-keys": { "label": "Clés API", "description": "Identifiants et routage" },
       "storage": { "label": "Stockage", "description": "Export et coffre local" },
-      "cloud": { "label": "Cloud", "description": "Synchronisation optionnelle" },
       "sessions": { "label": "Sessions", "description": "Données de benchmark" },
-      "cost": { "label": "Coût", "description": "Estimations d'utilisation" },
       "security": { "label": "Sécurité", "description": "Confidentialité et isolation" }
     }
   },
@@ -60,7 +53,7 @@
     "placeholder": "Saisissez un prompt d'évaluation…",
     "modelEval": "Évaluation de modèles",
     "dualCompare": "Comparaison double",
-    "securityKeysLocal": "Clés locales uniquement · jamais synchronisées",
+    "securityKeysLocal": "Clés en mémoire par défaut · stockage local uniquement",
     "securityUntrustedOutput": "Les sorties sont du contenu de modèle non fiable",
     "presets": {
       "reasoning": "Raisonnement",
@@ -104,30 +97,10 @@
       "noKeyB": "Le modèle B n'a pas de route de clé API — ce côté sera ignoré."
     }
   },
-  "auth": {
-    "localMode": "MODE LOCAL",
-    "localModeLabel": "Mode local",
-    "signInToSync": "Connexion pour synchroniser",
-    "optionalSync": "Synchronisation cloud optionnelle — aucun compte requis pour comparer.",
-    "optionalCloudSync": "Synchronisation cloud optionnelle",
-    "signInToSyncLink": "Connexion pour synchroniser →",
-    "continueLocally": "Continuer en local",
-    "syncOptional": "Synchronisation cloud optionnelle pour un banc d'évaluation local d'abord.",
-    "heroTitle": "Synchroniser ou",
-    "heroTitleAccent": "rester local.",
-    "heroSubtitle": "ModelWise est un banc d'évaluation local d'abord. L'identité cloud est une couche de synchronisation optionnelle — la comparaison fonctionne de la même façon."
-  },
   "notFound": {
     "code": "404",
     "title": "Route introuvable",
     "landing": "Accueil",
     "playground": "Terrain de jeu"
-  },
-  "account": {
-    "syncing": "SYNC…",
-    "syncErr": "ERREUR SYNC",
-    "offline": "HORS LIGNE",
-    "syncOk": "SYNC OK",
-    "local": "LOCAL"
   }
 }

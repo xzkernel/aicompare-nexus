@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import ENABLE_API_DOCS, IS_PRODUCTION
-from routes import compare, stream, health, models, auth
+from routes import compare, stream, health, models
 from middleware import RateLimitMiddleware
 from security import SecurityMiddleware
 
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
             "X-OpenAI-API-Key",
             "X-Google-API-Key",
             "X-Anthropic-API-Key",
+            "X-OpenCode-API-Key",
             "X-Meta-API-Key",
             "X-Meta-Base-Url",
             "X-Meta-Key-Header",
@@ -80,7 +81,6 @@ def create_app() -> FastAPI:
     app.include_router(compare.router)
     app.include_router(stream.router)
     app.include_router(models.router)
-    app.include_router(auth.router)
 
     return app
 

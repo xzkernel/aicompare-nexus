@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Download, Pin, PinOff } from "lucide-react";
+import { Copy, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -83,7 +83,7 @@ export function ComparisonOutputPanel({
 
 }: ComparisonOutputPanelProps) {
   const { t } = useTranslation();
-  const [pinned, setPinned] = useState(false);
+  const titleId = useId();
   const searchUsed = isSearchActuallyUsed(searchMetadata, searchCapability, searchPhase);
 
   const statusLabel = t(getStreamStatusKey(
@@ -158,11 +158,13 @@ export function ComparisonOutputPanel({
 
     <article
 
+      aria-labelledby={titleId}
+
+      aria-busy={state === "loading" || state === "streaming"}
+
       className={cn(
 
-        "flex min-h-[320px] flex-col border border-stroke-subtle bg-bg-paper/20 lg:min-h-[420px]",
-
-        pinned && "ring-1 ring-accent-cyan/40",
+        "flex min-h-[380px] flex-col bg-bg-paper/25 lg:min-h-[520px]",
 
         state === "streaming" && "ring-1 ring-accent-cyan/15"
 
@@ -172,7 +174,7 @@ export function ComparisonOutputPanel({
 
       <header className="flex items-center justify-between gap-2 border-b border-stroke-subtle px-3 py-2">
 
-        <p className="min-w-0 truncate font-mono text-[11px] text-text-primary">{modelLabel}</p>
+        <p id={titleId} className="min-w-0 truncate text-sm font-medium text-text-primary">{modelLabel}</p>
 
         {modelId && import.meta.env.MODE === "development" && import.meta.env.VITE_DEBUG_UI === "1" && (
 
@@ -197,7 +199,7 @@ export function ComparisonOutputPanel({
             />
           )}
 
-          <span className={cn("mw-label-mono rounded px-1.5 py-0.5 ring-1", statusConfig.className)}>
+          <span role="status" aria-live="polite" className={cn("mw-label-mono rounded px-1.5 py-0.5 ring-1", statusConfig.className)}>
 
             {statusConfig.label}
 
@@ -208,12 +210,6 @@ export function ComparisonOutputPanel({
             <span className="font-mono text-[10px] text-text-muted">{Math.round(liveMs)}ms</span>
 
           )}
-
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setPinned((p) => !p)}>
-
-            {pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-
-          </Button>
 
           {state === "success" && onCopy && (
 
@@ -324,13 +320,13 @@ function StreamingContent({
 
       ) : (
 
-        <pre className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-text-secondary">
+        <div className="whitespace-pre-wrap text-[14px] leading-7 text-text-primary">
 
           {text}
 
           <StreamCursor />
 
-        </pre>
+        </div>
 
       )}
 
@@ -398,13 +394,13 @@ function DiffHighlightedContent({
 
     ) : (
 
-      <pre className="whitespace-pre-wrap font-mono text-[12px] text-text-secondary">
+      <div className="whitespace-pre-wrap text-[14px] leading-7 text-text-primary">
 
         {fallback}
 
         <StreamCursor />
 
-      </pre>
+      </div>
 
     );
 
@@ -414,7 +410,7 @@ function DiffHighlightedContent({
 
   return (
 
-    <div className="space-y-1 font-mono text-[12px] leading-relaxed">
+    <div className="space-y-1 text-[14px] leading-7">
 
       {segments.map((seg, i) => (
 
@@ -454,7 +450,7 @@ function EmptyState({ message, error }: { message: string; error?: boolean }) {
 
     <div className="flex h-full min-h-[200px] items-center justify-center p-6">
 
-      <p className={cn("font-mono text-[11px]", error ? "text-accent-red" : "text-text-muted")}>{message}</p>
+      <p className={cn("text-sm", error ? "text-accent-red" : "text-text-muted")}>{message}</p>
 
     </div>
 

@@ -5,6 +5,8 @@ const DEFAULT_BY_PROVIDER: Record<string, string> = {
   openai: "openai:gpt-5.5",
   google: "google:gemini-3.1-pro-preview",
   anthropic: "anthropic:claude-sonnet-4-6",
+  "opencode-go": "opencode-go:grok-4.5",
+  "opencode-zen": "opencode-zen:gpt-5.6-sol",
   meta: "meta:deepseek/deepseek-v4-flash",
 };
 

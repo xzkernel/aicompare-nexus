@@ -9,6 +9,8 @@ ModelWise uses **Bring Your Own Key (BYOK)**. You configure keys in Settings; th
 | `openai` | OpenAI | OpenAI API Key | api.openai.com |
 | `google` | Google | Google AI Key | generativelanguage.googleapis.com |
 | `anthropic` | Anthropic | Anthropic API Key | api.anthropic.com |
+| `opencode-go` | OpenCode Go | OpenCode workspace key | opencode.ai/zen/go |
+| `opencode-zen` | OpenCode Zen | OpenCode workspace key | opencode.ai/zen |
 | `meta` | OpenRouter | OpenRouter / relay key | openrouter.ai (default) |
 | `custom` | Custom HTTP | Custom key + base URL | User-defined |
 
@@ -21,6 +23,7 @@ The frontend sends keys as headers (never in JSON body):
 | `X-OpenAI-API-Key` | OpenAI |
 | `X-Google-API-Key` | Google Gemini |
 | `X-Anthropic-API-Key` | Anthropic |
+| `X-OpenCode-API-Key` | OpenCode Go and Zen |
 | `X-Meta-API-Key` | OpenRouter / Together relay |
 | `X-Meta-Base-Url` | Optional relay base (default OpenRouter) |
 | `X-Meta-Key-Header` | Optional auth header name |
@@ -43,7 +46,7 @@ OpenRouter serves two roles:
 1. **Primary provider** (`meta`) — OSS models (DeepSeek R1, Llama 4, Qwen 3, Gemma 3)
 2. **Fallback relay** — when direct Anthropic/Google keys are missing but relay key exists
 
-Configure in Settings under **OpenRouter**. Optional backend `OPENROUTER_API_KEY` expands the model catalog via `GET /api/v1/models`.
+Configure the request key in Settings under **OpenRouter**. The backend hydrates the public OpenRouter catalog via `GET /api/v1/models`.
 
 ## Custom HTTP
 
@@ -55,9 +58,10 @@ For OpenAI-compatible APIs:
 
 ## Key storage
 
-- Stored in **browser localStorage** (profile-scoped)
-- Never written to backend disk or database in BYOK mode
-- Clear keys anytime from Settings
+- Active keys are held in browser memory by default and clear on reload or tab close
+- Optional persistence uses a password-protected encrypted IndexedDB vault or encrypted export
+- Keys are never written to backend disk or cloud storage by ModelWise
+- Clear active keys or delete the encrypted vault anytime from Settings
 
 ## Getting keys
 

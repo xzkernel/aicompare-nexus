@@ -1,2 +1,0 @@
--- Deprecated: use supabase/migrations/001_cloud_sync.sql
--- Server-side profile triggers are defined in the Supabase migration.

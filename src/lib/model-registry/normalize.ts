@@ -12,6 +12,8 @@ const PROVIDER_ORDER: RegistryProviderId[] = [
   "openai",
   "google",
   "anthropic",
+  "opencode-go",
+  "opencode-zen",
   "meta",
   "custom",
 ];
@@ -25,7 +27,7 @@ function safeModel(raw: Record<string, unknown>, providerId: RegistryProviderId)
     contextWindow: String(raw.contextWindow ?? "—"),
     multimodal: Boolean(raw.multimodal),
     reasoning: Boolean(raw.reasoning),
-    supportsWebSearch: raw.supportsWebSearch !== false && (
+    supportsWebSearch: !providerId.startsWith("opencode-") && raw.supportsWebSearch !== false && (
       raw.supportsWebSearch === true ||
       providerId === "google" ||
       providerId === "anthropic" ||

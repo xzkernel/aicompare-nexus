@@ -98,7 +98,7 @@ Existing `start`, `token`, `done`, `error`, `complete` unchanged.
 ### 7. Performance impact
 - Search adds provider-side latency (often 2–20s+) before/during token stream
 - Search latency tracked in `searchLatencyMs` per panel
-- No additional ModelWise backend hops — BYOK direct to providers
+- Search uses the same browser → ModelWise backend → provider request path as standard comparisons
 
 ### 8. Files modified / created
 **Created:** `docs/WEB_SEARCH.md`, `backend/schemas/search.py`, `backend/providers/stream_events.py`, `backend/services/search/*`, `src/lib/search-metadata.ts`, `src/lib/search-prefs.ts`, `src/lib/search-capabilities.ts`, `src/hooks/use-grounding.ts`, `GroundedBadge.tsx`, `CitationsPanel.tsx`, `PlaygroundWebSearchControls.tsx`

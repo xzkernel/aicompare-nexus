@@ -6,14 +6,17 @@ import { getProviderDisplayName } from "../../config/providers";
 import { getModelDisplayName as getRegistryModelName, resolveLiveModelValue } from "@/lib/model-registry";
 import { useModelRegistry } from "@/hooks/use-model-registry";
 import type { ProviderId } from "../../config/providers";
-import { saveComparisonSession, type ComparisonSession } from "@/lib/session-store";
+import {
+  saveComparisonSession,
+  updateComparisonSessionVerdict,
+  type ComparisonSession,
+  type ComparisonVerdict,
+} from "@/lib/session-store";
 import { PlaygroundWorkbench } from "./playground/PlaygroundWorkbench";
 import type { ModelResponse } from "./playground/types";
 import { estimateTokens } from "./playground/types";
 import { consumeCompareStream, type StreamEvent, type StreamSide } from "@/lib/compare-stream";
-import {
-  buildCompareHeaders,
-} from "@/lib/compare-request";
+import { buildCompareHeaders } from "@/lib/compare-request";
 import { deriveCompareExecutionState } from "@/lib/compare-execution-state";
 import { loadSearchPrefs, saveSearchPrefs } from "@/lib/search-prefs";
 import type { SearchMode } from "@/lib/search-metadata";
@@ -28,9 +31,11 @@ import {
 export function PromptPlayground({
   profileId = "default",
   restoredSession = null,
+  onSessionSaved,
 }: {
   profileId?: string;
   restoredSession?: ComparisonSession | null;
+  onSessionSaved?: (sessionId: string) => void;
 }) {
   const { t } = useTranslation();
   const { getApiKey, apiKeys } = useSecureApiKeys(profileId);
@@ -42,52 +47,97 @@ export function PromptPlayground({
     "Answer the following in order, keeping each response short (3-6 sentences max):\n\nReasoning:\nIf you have 3 apples and take away 2, how many do you have? Explain briefly.\n\nCreativity:\nDescribe a new animal that could exist on an alien planet.\n\nClarity:\nIn simple words, explain why the sky looks blue during the day."
   );
   const [isComparing, setIsComparing] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [responses, setResponses] = useState<ModelResponse[]>([]);
   const [searchMode, setSearchMode] = useState<SearchMode>(() => loadSearchPrefs().searchMode);
+  const [verdict, setVerdict] = useState<ComparisonVerdict>();
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
   const pendingRef = useRef<{ left: string; right: string }>({ left: "", right: "" });
   const flushScheduledRef = useRef(false);
+  const runResponsesRef = useRef<[ModelResponse, ModelResponse] | null>(null);
+  const verdictSaveRef = useRef(Promise.resolve());
+
+  const clearStaleResults = useCallback(() => {
+    runResponsesRef.current = null;
+    setResponses([]);
+    setVerdict(undefined);
+    setSavedSessionId(null);
+  }, []);
 
   useEffect(() => {
-    if (!restoredSession) return;
+    generationRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    pendingRef.current = { left: "", right: "" };
+    runResponsesRef.current = null;
+    setIsComparing(false);
+    setIsFinalizing(false);
+    setVerdict(restoredSession?.verdict);
+    setSavedSessionId(restoredSession?.id ?? null);
+
+    if (!restoredSession) {
+      setResponses([]);
+      return;
+    }
     setPrompt(restoredSession.prompt);
     setLeftModel(restoredSession.leftModel);
     setRightModel(restoredSession.rightModel);
-    const restored: ModelResponse[] = [];
-    if (restoredSession.leftResponse) {
-      restored.push({
-        model: restoredSession.leftModel,
-        status: "complete",
-        response: restoredSession.leftResponse,
-        responseTime: restoredSession.leftTimeMs ?? 0,
-      });
+    const hasLeft = Boolean(restoredSession.leftResponse?.trim());
+    const hasRight = Boolean(restoredSession.rightResponse?.trim());
+    if (!hasLeft && !hasRight) {
+      setResponses([]);
+      return;
     }
-    if (restoredSession.rightResponse) {
-      restored.push({
-        model: restoredSession.rightModel,
-        status: "complete",
-        response: restoredSession.rightResponse,
-        responseTime: restoredSession.rightTimeMs ?? 0,
-      });
-    }
-    if (restored.length) setResponses(restored);
-  }, [restoredSession?.id]);
+    const restored: [ModelResponse, ModelResponse] = [
+      hasLeft
+        ? {
+            model: restoredSession.leftModel,
+            status: "complete",
+            response: restoredSession.leftResponse!,
+            responseTime: restoredSession.leftTimeMs ?? 0,
+          }
+        : {
+            model: restoredSession.leftModel,
+            status: "cancelled",
+            response: "",
+            responseTime: 0,
+            error: "No saved response",
+          },
+      hasRight
+        ? {
+            model: restoredSession.rightModel,
+            status: "complete",
+            response: restoredSession.rightResponse!,
+            responseTime: restoredSession.rightTimeMs ?? 0,
+          }
+        : {
+            model: restoredSession.rightModel,
+            status: "cancelled",
+            response: "",
+            responseTime: 0,
+            error: "No saved response",
+          },
+    ];
+    runResponsesRef.current = restored;
+    setResponses([...restored]);
+  }, [restoredSession]);
 
   useEffect(() => {
     saveSearchPrefs({ searchMode });
   }, [searchMode]);
 
   useEffect(() => {
-    if (!registry) return;
+    if (!registry || isComparing || runResponsesRef.current) return;
     setLeftModel((current) =>
       resolveLiveModelValue(registry, current, "openai:gpt-5.5")
     );
     setRightModel((current) =>
       resolveLiveModelValue(registry, current, "google:gemini-3.1-pro-preview")
     );
-  }, [registry?.fingerprint]);
+  }, [registry, isComparing]);
 
   const getModelDisplayName = (modelString: string): string => {
     const [providerId] = modelString.split(":");
@@ -113,27 +163,27 @@ export function PromptPlayground({
   const flushPending = useCallback(() => {
     flushScheduledRef.current = false;
     const { left, right } = pendingRef.current;
-    setResponses((prev) => {
-      if (prev.length < 2) return prev;
-      const next = [...prev];
-      if (next[0].status === "streaming" || next[0].status === "loading") {
-        next[0] = {
-          ...next[0],
-          response: left,
-          status: next[0].status === "loading" && left ? "streaming" : next[0].status,
-          streamTokens: estimateTokens(left),
-        };
-      }
-      if (next[1].status === "streaming" || next[1].status === "loading") {
-        next[1] = {
-          ...next[1],
-          response: right,
-          status: next[1].status === "loading" && right ? "streaming" : next[1].status,
-          streamTokens: estimateTokens(right),
-        };
-      }
-      return next;
-    });
+    const current = runResponsesRef.current;
+    if (!current) return;
+    const next: [ModelResponse, ModelResponse] = [...current];
+    if (next[0].status === "streaming" || next[0].status === "loading") {
+      next[0] = {
+        ...next[0],
+        response: left,
+        status: next[0].status === "loading" && left ? "streaming" : next[0].status,
+        streamTokens: estimateTokens(left),
+      };
+    }
+    if (next[1].status === "streaming" || next[1].status === "loading") {
+      next[1] = {
+        ...next[1],
+        response: right,
+        status: next[1].status === "loading" && right ? "streaming" : next[1].status,
+        streamTokens: estimateTokens(right),
+      };
+    }
+    runResponsesRef.current = next;
+    setResponses([...next]);
   }, []);
 
   const scheduleFlush = useCallback(() => {
@@ -145,24 +195,28 @@ export function PromptPlayground({
   const updateSide = useCallback(
     (side: StreamSide, updater: (current: ModelResponse) => ModelResponse) => {
       const index = side === "left" ? 0 : 1;
-      setResponses((prev) => {
-        if (prev.length < 2) return prev;
-        const next = [...prev];
-        next[index] = updater(next[index]);
-        return next;
-      });
+      const current = runResponsesRef.current;
+      if (!current) return;
+      const next: [ModelResponse, ModelResponse] = [...current];
+      next[index] = updater(next[index]);
+      runResponsesRef.current = next;
+      setResponses([...next]);
     },
     []
   );
 
   const handleCancel = useCallback(() => {
+    const controller = abortRef.current;
+    if (!controller) return;
     generationRef.current += 1;
-    abortRef.current?.abort();
+    controller.abort();
     abortRef.current = null;
     pendingRef.current = { left: "", right: "" };
     setIsComparing(false);
-    setResponses((prev) =>
-      prev.map((r) =>
+    setIsFinalizing(false);
+    const current = runResponsesRef.current;
+    if (current) {
+      const cancelled = current.map((r) =>
         r.status === "complete"
           ? r
           : {
@@ -170,8 +224,10 @@ export function PromptPlayground({
               status: "cancelled",
               error: r.response ? undefined : "Cancelled",
             }
-      )
-    );
+      ) as [ModelResponse, ModelResponse];
+      runResponsesRef.current = cancelled;
+      setResponses([...cancelled]);
+    }
   }, []);
 
   const handleCompare = async () => {
@@ -201,28 +257,35 @@ export function PromptPlayground({
     const controller = new AbortController();
     abortRef.current = controller;
 
+    const runPrompt = prompt;
+    const runLeftModel = leftModel;
+    const runRightModel = rightModel;
+    const runSearchMode = searchMode;
     const leftResolved = execution.leftResolved;
     const rightResolved = execution.rightResolved;
-    const [leftProviderId, leftModelId] = leftModel.split(":");
-    const [rightProviderId, rightModelId] = rightModel.split(":");
+    const [leftProviderId, leftModelId] = runLeftModel.split(":");
+    const [rightProviderId, rightModelId] = runRightModel.split(":");
 
     setIsComparing(true);
+    setIsFinalizing(false);
+    setVerdict(undefined);
+    setSavedSessionId(null);
     pendingRef.current = { left: "", right: "" };
 
     const startedAt = Date.now();
     const leftCap = buildStaticSearchCapability(
       leftProviderId,
       leftResolved?.name,
-      searchMode
+      runSearchMode
     );
     const rightCap = buildStaticSearchCapability(
       rightProviderId,
       rightResolved?.name,
-      searchMode
+      runSearchMode
     );
-    setResponses([
+    const initialResponses: [ModelResponse, ModelResponse] = [
       {
-        model: leftModel,
+        model: runLeftModel,
         status: "loading",
         response: "",
         responseTime: 0,
@@ -233,7 +296,7 @@ export function PromptPlayground({
         searchCapability: leftCap,
       },
       {
-        model: rightModel,
+        model: runRightModel,
         status: "loading",
         response: "",
         responseTime: 0,
@@ -243,13 +306,14 @@ export function PromptPlayground({
         resolvedProvider: rightResolved?.name,
         searchCapability: rightCap,
       },
-    ]);
+    ];
+    runResponsesRef.current = initialResponses;
+    setResponses([...initialResponses]);
 
     const headers = buildCompareHeaders(leftResolved, rightResolved, apiKeys, getApiKey);
 
     const applyEvent = (event: StreamEvent) => {
       if (generation !== generationRef.current) return;
-
       switch (event.type) {
         case "start":
           updateSide(event.side, (r) => ({
@@ -354,19 +418,19 @@ export function PromptPlayground({
           }
           flushPending();
           updateSide(event.side, (r) => {
+            const response =
+              event.side === "left" ? pendingRef.current.left : pendingRef.current.right;
             const meta = event.searchMetadata
               ? mergeSearchMetadata(r.searchMetadata ?? EMPTY_SEARCH_METADATA, event.searchMetadata)
               : r.searchMetadata;
             const used = isSearchActuallyUsed(meta, r.searchCapability, r.searchPhase);
             return {
               ...r,
-              status: "complete",
-              response:
-                event.side === "left" ? pendingRef.current.left : pendingRef.current.right,
+              status: response.trim() ? "complete" : "error",
+              response,
+              error: response.trim() ? undefined : "Model returned an empty response",
               responseTime: Math.round(event.elapsed * 1000),
-              streamTokens: estimateTokens(
-                event.side === "left" ? pendingRef.current.left : pendingRef.current.right
-              ),
+              streamTokens: response.trim() ? estimateTokens(response) : 0,
               searchMetadata: meta,
               searchPhase: used ? "complete" : r.searchPhase === "skipped" ? "skipped" : "idle",
               searchCapability: r.searchCapability
@@ -379,6 +443,8 @@ export function PromptPlayground({
           updateSide(event.side, (r) => ({
             ...r,
             status: "error",
+            response:
+              event.side === "left" ? pendingRef.current.left : pendingRef.current.right,
             error: event.message,
             responseTime: event.elapsed ? Math.round(event.elapsed * 1000) : r.responseTime,
           }));
@@ -391,12 +457,12 @@ export function PromptPlayground({
     try {
       await consumeCompareStream({
         body: {
-          prompt,
+          prompt: runPrompt,
           leftModel: leftModelId,
           rightModel: rightModelId,
           leftProvider: leftResolved?.name,
           rightProvider: rightResolved?.name,
-          searchMode,
+          searchMode: runSearchMode,
         },
         headers,
         signal: controller.signal,
@@ -405,33 +471,6 @@ export function PromptPlayground({
 
       if (generation !== generationRef.current) return;
 
-      flushPending();
-
-      setResponses((current) => {
-        const left = current[0];
-        const right = current[1];
-        if (left?.status === "complete" || right?.status === "complete") {
-          saveComparisonSession({
-            prompt,
-            leftModel,
-            rightModel,
-            leftResponse: left?.response,
-            rightResponse: right?.response,
-            leftTimeMs: left?.responseTime,
-            rightTimeMs: right?.responseTime,
-            leftTokens: estimateTokens(left?.response ?? ""),
-            rightTokens: estimateTokens(right?.response ?? ""),
-          }).catch(() => {
-            /* local persistence failure is non-fatal */
-          });
-        }
-        return current;
-      });
-
-      toast({
-        title: "Comparison Complete",
-        description: "Live evaluation finished.",
-      });
     } catch (error) {
       if (generation !== generationRef.current) return;
 
@@ -443,40 +482,131 @@ export function PromptPlayground({
         error instanceof TypeError || raw.toLowerCase().includes("failed to fetch")
           ? "Backend unreachable — start API on port 8001 (cd backend && python -m uvicorn main:app --port 8001)"
           : raw;
+      flushPending();
+      updateSide("left", (response) =>
+        response.status === "complete" || response.status === "error"
+          ? response
+          : { ...response, status: "error", response: pendingRef.current.left, error: message }
+      );
+      updateSide("right", (response) =>
+        response.status === "complete" || response.status === "error"
+          ? response
+          : { ...response, status: "error", response: pendingRef.current.right, error: message }
+      );
+    }
+
+    if (generation !== generationRef.current) return;
+    abortRef.current = null;
+    setIsFinalizing(true);
+    flushPending();
+    updateSide("left", (response) =>
+      response.status === "loading" || response.status === "streaming"
+        ? { ...response, status: "error", error: "Stream ended before the model completed" }
+        : response
+    );
+    updateSide("right", (response) =>
+      response.status === "loading" || response.status === "streaming"
+        ? { ...response, status: "error", error: "Stream ended before the model completed" }
+        : response
+    );
+
+    const finalResponses = runResponsesRef.current;
+    if (!finalResponses) {
+      setIsFinalizing(false);
+      setIsComparing(false);
+      return;
+    }
+    const [left, right] = finalResponses;
+    const leftValid = left.status === "complete" && Boolean(left.response.trim());
+    const rightValid = right.status === "complete" && Boolean(right.response.trim());
+
+    if (leftValid || rightValid) {
+      try {
+        const saved = await saveComparisonSession({
+          prompt: runPrompt,
+          leftModel: runLeftModel,
+          rightModel: runRightModel,
+          leftResponse: leftValid ? left.response : undefined,
+          rightResponse: rightValid ? right.response : undefined,
+          leftTimeMs: leftValid ? left.responseTime : undefined,
+          rightTimeMs: rightValid ? right.responseTime : undefined,
+          leftTokens: leftValid ? estimateTokens(left.response) : undefined,
+          rightTokens: rightValid ? estimateTokens(right.response) : undefined,
+        });
+        if (generation === generationRef.current) {
+          setSavedSessionId(saved.id);
+          onSessionSaved?.(saved.id);
+        }
+      } catch {
+        /* local persistence failure is non-fatal */
+      }
+    }
+
+    if (generation !== generationRef.current) return;
+    setIsFinalizing(false);
+    setIsComparing(false);
+    abortRef.current = null;
+    if (leftValid && rightValid) {
+      toast({ title: "Comparison Complete", description: "Both model responses completed." });
+    } else if (leftValid || rightValid) {
+      toast({
+        title: "Comparison Partially Complete",
+        description: `${leftValid ? "Model A" : "Model B"} completed; ${leftValid ? "Model B" : "Model A"} failed.`,
+      });
+    } else {
       toast({
         title: "Comparison Failed",
-        description: message,
+        description: "Neither model produced a valid completed response.",
         variant: "destructive",
       });
-
-      setResponses([
-        {
-          model: leftModel,
-          status: "error",
-          response: pendingRef.current.left,
-          responseTime: 0,
-          error: message,
-        },
-        {
-          model: rightModel,
-          status: "error",
-          response: pendingRef.current.right,
-          responseTime: 0,
-          error: message,
-        },
-      ]);
-    } finally {
-      if (generation === generationRef.current) {
-        setIsComparing(false);
-        abortRef.current = null;
-      }
     }
   };
 
   const handleSwapModels = () => {
-    const temp = leftModel;
+    if (isComparing) return;
+    clearStaleResults();
     setLeftModel(rightModel);
-    setRightModel(temp);
+    setRightModel(leftModel);
+  };
+
+  const handlePromptChange = (value: string) => {
+    if (isComparing || value === prompt) return;
+    clearStaleResults();
+    setPrompt(value);
+  };
+
+  const handleLeftModelChange = (value: string) => {
+    if (isComparing || value === leftModel) return;
+    clearStaleResults();
+    setLeftModel(value);
+  };
+
+  const handleRightModelChange = (value: string) => {
+    if (isComparing || value === rightModel) return;
+    clearStaleResults();
+    setRightModel(value);
+  };
+
+  const handleSearchModeChange = (value: SearchMode) => {
+    if (isComparing || value === searchMode) return;
+    clearStaleResults();
+    setSearchMode(value);
+  };
+
+  const handleVerdictChange = (value: ComparisonVerdict) => {
+    const current = runResponsesRef.current;
+    const bothValid = current?.every(
+      (response) => response.status === "complete" && Boolean(response.response.trim())
+    );
+    if (isComparing || !bothValid) return;
+    setVerdict(value);
+    if (savedSessionId) {
+      const sessionId = savedSessionId;
+      verdictSaveRef.current = verdictSaveRef.current
+        .then(() => updateComparisonSessionVerdict(sessionId, value))
+        .then(() => undefined)
+        .catch(() => undefined);
+    }
   };
 
   const copyResponse = (response: string) => {
@@ -494,14 +624,15 @@ export function PromptPlayground({
     <PlaygroundWorkbench
       profileId={profileId}
       prompt={prompt}
-      onPromptChange={setPrompt}
-      onClearPrompt={() => setPrompt("")}
+      onPromptChange={handlePromptChange}
+      onClearPrompt={() => handlePromptChange("")}
       leftModel={leftModel}
       rightModel={rightModel}
-      onLeftModelChange={setLeftModel}
-      onRightModelChange={setRightModel}
+      onLeftModelChange={handleLeftModelChange}
+      onRightModelChange={handleRightModelChange}
       onSwapModels={handleSwapModels}
       isComparing={isComparing}
+      isFinalizing={isFinalizing}
       compareExecution={compareExecution}
       onCompare={handleCompare}
       onCancel={handleCancel}
@@ -510,9 +641,11 @@ export function PromptPlayground({
       getModelDisplayName={getModelDisplayName}
       onCopyResponse={copyResponse}
       searchMode={searchMode}
-      onSearchModeChange={setSearchMode}
+      onSearchModeChange={handleSearchModeChange}
       leftResolvedProvider={compareExecution.leftResolved?.name}
       rightResolvedProvider={compareExecution.rightResolved?.name}
+      verdict={verdict}
+      onVerdictChange={handleVerdictChange}
     />
   );
 }

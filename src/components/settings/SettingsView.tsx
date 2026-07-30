@@ -1,12 +1,8 @@
 import { SettingsLayout } from "./SettingsLayout";
-import { SettingsProfilesSection } from "./SettingsProfilesSection";
 import { SettingsProvidersOverview } from "./SettingsProvidersOverview";
 import { SettingsApiKeysSection } from "./SettingsApiKeysSection";
 import { SettingsStorageSection, SettingsSecuritySection } from "./SettingsStorageSection";
-import { SettingsCloudSyncSection } from "./SettingsCloudSyncSection";
-import { CostEstimator } from "@/components/CostEstimator";
 import { SessionExportImport } from "@/components/SessionExportImport";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import type { SettingsHandlersProps } from "./settings-props";
 import type { ProviderId } from "@/config/providers";
 
@@ -19,15 +15,26 @@ export function SettingsView(props: SettingsHandlersProps) {
     openaiValid,
     googleValid,
     anthropicValid,
+    opencodeValid,
     metaValid,
     customValid,
   } = props;
 
-  const connectedCount = [openaiValid, googleValid, anthropicValid, metaValid, customValid].filter(Boolean).length;
+  const routesConfiguredCount = [
+    openaiValid,
+    googleValid,
+    anthropicValid,
+    opencodeValid,
+    opencodeValid,
+    metaValid,
+    customValid,
+  ].filter(Boolean).length;
   const validity: Record<ProviderId, boolean> = {
     openai: openaiValid,
     google: googleValid,
     anthropic: anthropicValid,
+    "opencode-go": opencodeValid,
+    "opencode-zen": opencodeValid,
     meta: metaValid,
     custom: customValid,
   };
@@ -37,16 +44,8 @@ export function SettingsView(props: SettingsHandlersProps) {
       activeSection={activeSection}
       onSectionChange={setActiveSection}
       hasValidKeys={hasValidKeys}
-      connectedCount={connectedCount}
+      routesConfiguredCount={routesConfiguredCount}
     >
-      {activeSection === "profiles" && (
-        <SettingsProfilesSection
-          profileId={props.profileId}
-          setProfileId={props.setProfileId}
-          availableProfiles={props.availableProfiles}
-        />
-      )}
-
       {activeSection === "providers" && (
         <SettingsProvidersOverview apiKeys={apiKeys} validity={validity} />
       )}
@@ -55,17 +54,9 @@ export function SettingsView(props: SettingsHandlersProps) {
 
       {activeSection === "storage" && <SettingsStorageSection {...props} />}
 
-      {activeSection === "cloud" && isSupabaseConfigured() && <SettingsCloudSyncSection />}
-
       {activeSection === "sessions" && (
         <div className="border border-stroke-subtle [&_.rounded-lg]:rounded-none [&_.shadow]:shadow-none">
           <SessionExportImport />
-        </div>
-      )}
-
-      {activeSection === "cost" && (
-        <div className="border border-stroke-subtle [&_.rounded-lg]:rounded-none">
-          <CostEstimator />
         </div>
       )}
 

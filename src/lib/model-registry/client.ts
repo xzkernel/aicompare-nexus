@@ -50,15 +50,8 @@ export function setCachedRegistry(registry: NormalizedRegistry): void {
   if (changed) emitRegistryChange();
 }
 
-async function fetchRegistryFromNetwork(
-  metaRelayKey?: string | null
-): Promise<NormalizedRegistry> {
-  const headers: Record<string, string> = {
-    "Cache-Control": "no-cache",
-  };
-  if (metaRelayKey) headers["X-Meta-API-Key"] = metaRelayKey;
-
-  const res = await fetch(`${apiUrl(API_PATH)}?t=${Date.now()}`, { headers, cache: "no-store" });
+async function fetchRegistryFromNetwork(): Promise<NormalizedRegistry> {
+  const res = await fetch(`${apiUrl(API_PATH)}?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`registry ${res.status}`);
 
   const data = (await res.json()) as ModelRegistryResponse;
@@ -73,16 +66,13 @@ async function fetchRegistryFromNetwork(
   };
 }
 
-export async function fetchModelRegistry(
-  metaRelayKey?: string | null,
-  force = false
-): Promise<NormalizedRegistry> {
+export async function fetchModelRegistry(force = false): Promise<NormalizedRegistry> {
   const cacheAge = getRegistryCacheAgeMs();
   const cacheValid = cached != null && cacheAge < REGISTRY_CACHE_TTL_MS;
 
   if (!force && cacheValid && cached) {
     if (cacheAge > REGISTRY_REVALIDATE_MS) {
-      void fetchModelRegistry(metaRelayKey, true);
+      void fetchModelRegistry(true);
     }
     return cached;
   }
@@ -91,7 +81,7 @@ export async function fetchModelRegistry(
 
   inflight = (async () => {
     try {
-      const normalized = await fetchRegistryFromNetwork(metaRelayKey);
+      const normalized = await fetchRegistryFromNetwork();
       setCachedRegistry(normalized);
       return normalized;
     } catch {

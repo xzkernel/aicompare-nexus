@@ -1,7 +1,6 @@
 import { ENTITY_SCHEMA_VERSION, type SyncMeta } from "@/types/sync";
 import { getDeviceId } from "./device-id";
 import { getLocalDb, notifyLocalDbChange } from "./db";
-import { enqueueSync } from "./sync-queue";
 
 export interface SavedPromptRecord extends SyncMeta {
   id: string;
@@ -38,9 +37,6 @@ export async function putPromptRecord(
     deletedAt: null,
   };
   await db.put("saved_prompts", record);
-  if (!options?.skipSync) {
-    await enqueueSync("saved_prompts", record.id, "upsert");
-  }
   notifyLocalDbChange();
   return record;
 }
@@ -51,11 +47,6 @@ export async function upsertPromptRecordLocal(
 ): Promise<void> {
   const db = await getLocalDb();
   await db.put("saved_prompts", record);
-  if (!options?.skipSync && record.deletedAt == null) {
-    await enqueueSync("saved_prompts", record.id, "upsert");
-  } else if (!options?.skipSync && record.deletedAt != null) {
-    await enqueueSync("saved_prompts", record.id, "delete");
-  }
   notifyLocalDbChange();
 }
 
@@ -65,6 +56,5 @@ export async function softDeletePromptRecord(id: string): Promise<void> {
   if (!row) return;
   const now = Date.now();
   await db.put("saved_prompts", { ...row, deletedAt: now, updatedAt: now });
-  await enqueueSync("saved_prompts", id, "delete");
   notifyLocalDbChange();
 }

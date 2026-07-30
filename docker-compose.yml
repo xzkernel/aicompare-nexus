@@ -10,7 +10,6 @@ services:
       - ENVIRONMENT=development
       - CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
       - TRUSTED_PROXY_IPS=127.0.0.1,::1,172.16.0.0/12
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     volumes:
       - ./backend:/app
     restart: unless-stopped

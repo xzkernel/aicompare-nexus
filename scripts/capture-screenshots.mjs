@@ -14,7 +14,6 @@ const BASE = process.env.MW_BASE_URL || "http://localhost:8080";
 
 const shots = [
   { name: "playground", path: "/playground", wait: 1500 },
-  { name: "dashboard", path: "/dashboard", wait: 1500 },
   { name: "settings", path: "/settings", wait: 1500 },
   { name: "registry", path: "/playground", wait: 2000, action: "open-model-picker" },
 ];

@@ -1,39 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { isSupabaseConfigured } from "@/lib/supabase";
-
-export type SettingsSectionId =
-  | "profiles"
-  | "providers"
-  | "api-keys"
-  | "storage"
-  | "cloud"
-  | "sessions"
-  | "cost"
-  | "security";
-
-export const SETTINGS_SECTION_IDS: SettingsSectionId[] = [
-  "profiles",
-  "providers",
-  "api-keys",
-  "storage",
-  "cloud",
-  "sessions",
-  "cost",
-  "security",
-];
-
-function visibleSettingsSectionIds(): SettingsSectionId[] {
-  if (isSupabaseConfigured()) return SETTINGS_SECTION_IDS;
-  return SETTINGS_SECTION_IDS.filter((id) => id !== "cloud");
-}
+import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "./settings-sections";
 
 type SettingsLayoutProps = {
   activeSection: SettingsSectionId;
   onSectionChange: (id: SettingsSectionId) => void;
   hasValidKeys: boolean;
-  connectedCount: number;
+  routesConfiguredCount: number;
   children: React.ReactNode;
 };
 
@@ -44,7 +18,7 @@ export function SettingsLayout({
   activeSection,
   onSectionChange,
   hasValidKeys,
-  connectedCount,
+  routesConfiguredCount,
   children,
 }: SettingsLayoutProps) {
   const { t } = useTranslation();
@@ -56,13 +30,13 @@ export function SettingsLayout({
           <h2 className="font-mono text-2xl font-bold text-white">{t("settings.controlCenter")}</h2>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-white/50">
             {t("settings.subtitle")} ·{" "}
-            {t("settings.providersConnected", { count: connectedCount })}
-            {hasValidKeys ? ` · ${t("settings.ready")}` : ` · ${t("settings.keysRequired")}`}
+            {t("settings.routesConfigured", { count: routesConfiguredCount })}
+            {hasValidKeys ? ` · ${t("settings.keyPresent")}` : ` · ${t("settings.keysRequired")}`}
           </p>
         </div>
 
         <div className="flex border border-white/[0.06] bg-[#0e0e0e] p-1">
-          {visibleSettingsSectionIds().map((sectionId) => (
+          {SETTINGS_SECTION_IDS.map((sectionId) => (
             <button
               key={sectionId}
               type="button"
@@ -133,22 +107,24 @@ export function SettingsKeyField({
   hint,
   value,
   placeholder,
-  visible,
+  visible = false,
   onToggleVisible,
   onChange,
   valid,
   helpUrl,
+  hideable = true,
 }: {
   id: string;
   label: string;
   hint?: string;
   value: string;
   placeholder: string;
-  visible: boolean;
-  onToggleVisible: () => void;
+  visible?: boolean;
+  onToggleVisible?: () => void;
   onChange: (value: string) => void;
   valid?: boolean;
   helpUrl?: string;
+  hideable?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -164,7 +140,7 @@ export function SettingsKeyField({
                 valid ? "text-accent-green" : value ? "text-accent-red" : "text-text-muted"
               )}
             >
-              {valid ? "valid" : value ? "invalid" : "empty"}
+              {valid ? "configured" : "missing"}
             </span>
           )}
           {helpUrl && (
@@ -182,20 +158,25 @@ export function SettingsKeyField({
       <div className="relative">
         <input
           id={id}
-          type={visible ? "text" : "password"}
+          type={!hideable || visible ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-stroke-subtle bg-bg-soft px-3 py-2 pr-16 font-mono text-[12px] text-text-primary placeholder:text-text-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan/40"
+          className={cn(
+            "w-full border border-stroke-subtle bg-bg-soft px-3 py-2 font-mono text-[12px] text-text-primary placeholder:text-text-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan/40",
+            hideable && "pr-16"
+          )}
           autoComplete="off"
         />
-        <button
-          type="button"
-          onClick={onToggleVisible}
-          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-muted hover:text-text-primary"
-        >
-          {visible ? "hide" : "show"}
-        </button>
+        {hideable && (
+          <button
+            type="button"
+            onClick={onToggleVisible}
+            className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-muted hover:text-text-primary"
+          >
+            {visible ? "hide" : "show"}
+          </button>
+        )}
       </div>
       {hint && <p className="font-mono text-[10px] text-text-muted">{hint}</p>}
     </div>

@@ -9,6 +9,7 @@ class ByokHeaders:
     anthropic: Optional[str] = None
     meta: Optional[str] = None
     custom: Optional[str] = None
+    opencode: Optional[str] = None
     meta_base_url: Optional[str] = None
     meta_key_header: str = "Authorization"
     custom_base_url: Optional[str] = None
@@ -21,6 +22,7 @@ def parse_byok_headers(
     x_anthropic_api_key: Optional[str] = None,
     x_meta_api_key: Optional[str] = None,
     x_custom_api_key: Optional[str] = None,
+    x_opencode_api_key: Optional[str] = None,
     x_meta_base_url: Optional[str] = None,
     x_meta_key_header: Optional[str] = None,
     x_custom_base_url: Optional[str] = None,
@@ -32,6 +34,7 @@ def parse_byok_headers(
         anthropic=x_anthropic_api_key,
         meta=x_meta_api_key,
         custom=x_custom_api_key,
+        opencode=x_opencode_api_key,
         meta_base_url=x_meta_base_url,
         meta_key_header=x_meta_key_header or "Authorization",
         custom_base_url=x_custom_base_url,

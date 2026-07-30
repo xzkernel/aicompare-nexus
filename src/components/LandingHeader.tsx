@@ -46,12 +46,6 @@ export function LandingHeader() {
         <div className="flex items-center gap-[8px]">
           <LanguageSwitcher variant="landing" />
           <Link
-            to="/auth"
-            className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-white/60 transition-opacity hover:opacity-70"
-          >
-            {t("nav.signIn")}
-          </Link>
-          <Link
             to="/playground"
             className="bg-white px-5 py-2 font-mono text-[10px] uppercase tracking-widest text-black transition-transform duration-150 active:scale-95 hover:bg-[#5de6ff]"
           >

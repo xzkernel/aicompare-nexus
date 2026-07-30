@@ -1,4 +1,4 @@
-import { Database, Download, Shield, Upload } from "lucide-react";
+import { Database, Download, Shield, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
     handleImport,
     handleSaveToIndexedDB,
     handleLoadFromIndexedDB,
+    handleDeleteFromIndexedDB,
   } = props;
 
   return (
@@ -115,18 +116,22 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Device vault" description="IndexedDB · AES-GCM" icon={Database}>
-        <div className="flex flex-wrap gap-2">
-          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+      <SettingsPanel title="Encrypted device vault" description="Explicit persistence · IndexedDB · AES-GCM" icon={Database}>
+        <div className="space-y-3">
+          <p className="font-mono text-[10px] text-text-muted">
+            Separate from active in-memory keys. Saving replaces the encrypted vault for this device.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="font-mono text-[11px]">
                 <Database className="mr-2 h-3.5 w-3.5" />
-                Save to device
+                Save encrypted vault
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Save to Device</DialogTitle>
+                <DialogTitle>Save Encrypted Vault</DialogTitle>
                 <DialogDescription>Save your API keys encrypted on this device.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -149,22 +154,22 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                   />
                 </div>
                 <Button onClick={handleSaveToIndexedDB} disabled={!password || !confirmPassword}>
-                  Save to Device
+                  Save Encrypted Vault
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
 
-          <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+            <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="font-mono text-[11px]">
                 <Database className="mr-2 h-3.5 w-3.5" />
-                Load from device
+                Load encrypted vault
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Load from Device</DialogTitle>
+                <DialogTitle>Load Encrypted Vault</DialogTitle>
                 <DialogDescription>Load your saved API keys from this device.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -178,11 +183,21 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                   />
                 </div>
                 <Button onClick={handleLoadFromIndexedDB} disabled={!password}>
-                  Load from Device
+                  Load Encrypted Vault
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono text-[11px] text-destructive"
+              onClick={() => void handleDeleteFromIndexedDB()}
+            >
+              <Trash2 className="mr-2 h-3.5 w-3.5" />
+              Delete encrypted vault
+            </Button>
+          </div>
         </div>
       </SettingsPanel>
 
@@ -191,13 +206,13 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
           <li>· Default: in-memory only (cleared on tab close)</li>
           <li>· Device vault: optional AES-GCM via WebCrypto</li>
           <li>· Export format: encrypted JSON bundle</li>
-          <li>· IndexedDB primary store for sessions & prompts</li>
-          <li>· Optional cloud sync via Supabase (never stores API keys)</li>
+          <li>· Completed comparisons are saved to browser IndexedDB</li>
+          <li>· Sessions and preferences remain on this device</li>
         </ul>
         <Alert className="mt-3 border-stroke-subtle">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-mono text-[10px]">
-            Browser reset clears in-memory keys unless exported or saved to device vault.
+            Closing or reloading the tab clears active keys. An encrypted export or device vault must be loaded explicitly.
           </AlertDescription>
         </Alert>
       </SettingsPanel>
@@ -216,16 +231,16 @@ export function SettingsSecuritySection() {
           <strong className="text-text-primary">Encrypted persistence:</strong> optional AES-GCM + PBKDF2 for device/export.
         </li>
         <li>
-          <strong className="text-text-primary">Direct routing:</strong> requests go from your browser to providers; compare API receives keys as headers only.
+          <strong className="text-text-primary">Backend transit:</strong> prompts and selected provider keys pass through your configured ModelWise backend; it does not intentionally persist keys.
         </li>
         <li>
-          <strong className="text-text-primary">No key sync:</strong> provider API keys are never uploaded to cloud storage.
+          <strong className="text-text-primary">Device-only data:</strong> sessions, preferences, and provider keys are never cloud-synced.
         </li>
         <li>
-          <strong className="text-text-primary">Local-first:</strong> comparison history lives in IndexedDB; cloud sync is optional.
+          <strong className="text-text-primary">Local-only:</strong> comparison history uses this browser's IndexedDB.
         </li>
         <li>
-          <strong className="text-text-primary">Self-hosted:</strong> run on your own infrastructure for full control.
+          <strong className="text-text-primary">Self-hosted:</strong> you control the ModelWise deployment; external providers still receive routed prompts and requests.
         </li>
         <li>
           <strong className="text-text-primary">Provider isolation:</strong> each provider key is used only for its routed models.

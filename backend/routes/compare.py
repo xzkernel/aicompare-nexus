@@ -16,6 +16,7 @@ def _byok_from_headers(
     x_openai_api_key: Optional[str],
     x_google_api_key: Optional[str],
     x_anthropic_api_key: Optional[str],
+    x_opencode_api_key: Optional[str],
     x_meta_api_key: Optional[str],
     x_custom_api_key: Optional[str],
     x_meta_base_url: Optional[str],
@@ -27,6 +28,7 @@ def _byok_from_headers(
         x_openai_api_key=x_openai_api_key,
         x_google_api_key=x_google_api_key,
         x_anthropic_api_key=x_anthropic_api_key,
+        x_opencode_api_key=x_opencode_api_key,
         x_meta_api_key=x_meta_api_key,
         x_custom_api_key=x_custom_api_key,
         x_meta_base_url=x_meta_base_url,
@@ -42,6 +44,7 @@ async def ask(
     x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     x_google_api_key: Optional[str] = Header(default=None, alias="X-Google-API-Key"),
     x_anthropic_api_key: Optional[str] = Header(default=None, alias="X-Anthropic-API-Key"),
+    x_opencode_api_key: Optional[str] = Header(default=None, alias="X-OpenCode-API-Key"),
     x_meta_api_key: Optional[str] = Header(default=None, alias="X-Meta-API-Key"),
     x_custom_api_key: Optional[str] = Header(default=None, alias="X-Custom-API-Key"),
     x_meta_base_url: Optional[str] = Header(default=None, alias="X-Meta-Base-Url"),
@@ -57,6 +60,7 @@ async def ask(
         x_openai_api_key,
         x_google_api_key,
         x_anthropic_api_key,
+        x_opencode_api_key,
         x_meta_api_key,
         x_custom_api_key,
         x_meta_base_url,
@@ -65,7 +69,7 @@ async def ask(
         x_custom_key_header,
     )
 
-    if not any([keys.openai, keys.google, keys.anthropic, keys.meta, keys.custom]):
+    if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
 
     try:
@@ -83,6 +87,7 @@ async def compare(
     x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     x_google_api_key: Optional[str] = Header(default=None, alias="X-Google-API-Key"),
     x_anthropic_api_key: Optional[str] = Header(default=None, alias="X-Anthropic-API-Key"),
+    x_opencode_api_key: Optional[str] = Header(default=None, alias="X-OpenCode-API-Key"),
     x_meta_api_key: Optional[str] = Header(default=None, alias="X-Meta-API-Key"),
     x_custom_api_key: Optional[str] = Header(default=None, alias="X-Custom-API-Key"),
     x_meta_base_url: Optional[str] = Header(default=None, alias="X-Meta-Base-Url"),
@@ -98,6 +103,7 @@ async def compare(
         x_openai_api_key,
         x_google_api_key,
         x_anthropic_api_key,
+        x_opencode_api_key,
         x_meta_api_key,
         x_custom_api_key,
         x_meta_base_url,
@@ -106,7 +112,7 @@ async def compare(
         x_custom_key_header,
     )
 
-    if not any([keys.openai, keys.google, keys.anthropic, keys.meta, keys.custom]):
+    if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
 
     try:

@@ -1,6 +1,6 @@
 # Self-Hosting
 
-ModelWise runs entirely on your infrastructure. No ModelWise cloud is required.
+The ModelWise frontend and backend can run on your infrastructure; no ModelWise-operated cloud is required. Requests still leave your infrastructure when you select external AI providers.
 
 ## Quick start (Docker — recommended)
 
@@ -20,7 +20,7 @@ open http://localhost:8080
 | Service | Port | Notes |
 |---------|------|-------|
 | Frontend (nginx + SPA) | 8080 | Serves `dist/`, proxies `/api` |
-| Backend (FastAPI) | 8001 | BYOK relay only — no user keys stored |
+| Backend (FastAPI) | 8001 | BYOK transit; keys are not intentionally persisted |
 
 ### Production environment variables
 
@@ -32,9 +32,6 @@ Copy [`.env.example`](../.env.example) → `.env`:
 | `ENVIRONMENT` | No | `production` disables OpenAPI docs by default |
 | `ENABLE_API_DOCS` | No | Set `false` in production |
 | `TRUSTED_PROXY_IPS` | No | CIDRs/IPs allowed to set `X-Forwarded-For` (defaults cover Docker/nginx) |
-| `OPENROUTER_API_KEY` | No | Server-side model catalog hydration only |
-| `VITE_SUPABASE_URL` | No | Optional cloud sync (build-time arg) |
-| `VITE_SUPABASE_ANON_KEY` | No | Optional cloud sync (build-time arg) |
 
 Backend-only config: [backend/env.env.example](../backend/env.env.example) → `backend/env.env` for local non-Docker runs.
 
@@ -75,7 +72,7 @@ If TLS terminates at a load balancer, ensure it forwards:
 
 These are enabled out of the box:
 
-- **BYOK**: Provider keys stay in the browser; never stored server-side
+- **BYOK**: Active keys are memory-only by default and transit the backend per request; the backend does not intentionally persist them
 - **Rate limiting**: `RateLimitMiddleware` (60/min, 1000/hr default)
 - **Trusted proxy IP resolution**: `X-Forwarded-For` only trusted from configured proxy CIDRs
 - **SSRF protection**: Custom/relay base URLs must be HTTPS and non-private
@@ -89,20 +86,7 @@ These are enabled out of the box:
 - [ ] `ENVIRONMENT=production` and `ENABLE_API_DOCS=false`
 - [ ] HTTPS enabled with HSTS
 - [ ] `backend/env.env` and `.env` not committed
-- [ ] No service-role Supabase keys in frontend build args (anon key only)
-- [ ] Supabase RLS migrations applied (`001_cloud_sync.sql`, `002_rls_hardening.sql`)
 - [ ] SSE proxy buffering disabled on `/api/` (included in `nginx.conf`)
-
----
-
-## Optional Supabase cloud sync
-
-1. Create a Supabase project.
-2. Run migrations in `supabase/migrations/`.
-3. Configure OAuth redirect: `https://your-domain.com/auth/callback`
-4. Rebuild frontend with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-
-See [CLOUD_SYNC.md](./CLOUD_SYNC.md) and [SUPABASE_SETUP.md](../SUPABASE_SETUP.md).
 
 ---
 
@@ -141,13 +125,14 @@ curl http://127.0.0.1:8001/api/v1/models
 | Streaming stalls | Disable proxy buffering; check provider keys |
 | Rate limit wrong client IP | Set `TRUSTED_PROXY_IPS`; ensure nginx sets `X-Forwarded-For` |
 | Empty model list | Start backend; falls back to offline catalog |
-| OAuth redirect mismatch | Add `https://your-domain/auth/callback` in Supabase |
 
 ---
 
 ## What ModelWise does not host
 
 - Model inference billing
-- User API keys
-- Comparison session data (local IndexedDB by default)
-- Account management (optional Supabase only)
+- Persistent user API key storage in the backend
+- Comparison session data outside the user's browser IndexedDB
+- Account management or cloud synchronization
+
+External providers still receive prompts, request parameters, and provider credentials for routed requests. Their retention, billing, and privacy policies continue to apply.

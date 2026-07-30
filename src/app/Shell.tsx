@@ -9,14 +9,12 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ByokInfrastructurePanel } from "@/components/shell/ByokInfrastructurePanel";
 import { RegistryBootstrap } from "@/components/RegistryBootstrap";
 import { BackendStatusBanner } from "@/components/BackendStatusBanner";
-import { AccountMenu, LocalModeBadge } from "@/components/auth/AccountMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const NAV_ITEMS = [
-  { key: "dashboard", path: "/dashboard" },
   { key: "playground", path: "/playground" },
-  { key: "providers", path: "/settings" },
-  { key: "settings", path: "/settings" },
+  { key: "providers", path: "/settings?section=providers" },
+  { key: "settings", path: "/settings?section=api-keys" },
 ] as const;
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -24,9 +22,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const settingsSection = new URLSearchParams(location.search).get("section");
 
-  const isActive = (path: string | null) =>
-    !!path && location.pathname === path;
+  const isActive = (path: string | null) => {
+    if (!path) return false;
+    const [pathname, query] = path.split("?");
+    if (location.pathname !== pathname) return false;
+    if (!query) return true;
+    const expected = new URLSearchParams(query);
+    const current = new URLSearchParams(location.search);
+    return [...expected].every(([key, value]) => current.get(key) === value);
+  };
 
   const sidebarContent = (
     <>
@@ -54,7 +60,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 onClick={isMobile ? () => setMobileOpen(false) : undefined}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 font-mono text-xs tracking-tight transition-colors",
-                  isActive(item.path)
+                  isActive(item.path) ||
+                  (item.key === "settings" &&
+                    location.pathname === "/settings" &&
+                    settingsSection !== "providers")
                     ? "border-s-2 border-[#5de6ff] bg-[#5de6ff]/5 text-[#5de6ff]"
                     : "text-white/50 hover:bg-white/5 hover:text-white"
                 )}
@@ -72,12 +81,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        <Link
-          to="/playground"
-          className="mt-8 block w-full bg-white py-3 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-black transition-colors hover:bg-[#5de6ff]"
-        >
-          {t("nav.newWorkspace")}
-        </Link>
       </div>
 
       <ByokInfrastructurePanel collapsed={false} />
@@ -148,17 +151,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </span>
           <nav className="hidden items-center gap-6 md:flex">
             <Link
-              to="/dashboard"
-              className={cn(
-                "font-mono text-xs transition-colors",
-                location.pathname === "/dashboard"
-                  ? "font-bold text-white"
-                  : "text-white/50 hover:text-white"
-              )}
-            >
-              {t("nav.workspace")}
-            </Link>
-            <Link
               to="/playground"
               className={cn(
                 "font-mono text-xs transition-colors",
@@ -174,14 +166,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
-          <LocalModeBadge />
-          <AccountMenu />
-          <div className="hidden items-center gap-2 border border-white/[0.06] bg-[#1c1b1b] px-3 py-1.5 lg:flex">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#5de6ff]" />
-            <span className="font-mono text-[10px] uppercase tracking-tight text-white/50">
-              {t("nav.byokActive")}
-            </span>
-          </div>
+          <span className="rounded px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-accent-green ring-1 ring-accent-green/30">
+            Local only
+          </span>
         </div>
       </header>
 

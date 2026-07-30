@@ -74,6 +74,9 @@ export function buildCompareHeaders(
     if (provider.name === "openai") headers["X-OpenAI-API-Key"] = provider.key;
     if (provider.name === "google") headers["X-Google-API-Key"] = provider.key;
     if (provider.name === "anthropic") headers["X-Anthropic-API-Key"] = provider.key;
+    if (provider.name === "opencode-go" || provider.name === "opencode-zen") {
+      headers["X-OpenCode-API-Key"] = provider.key;
+    }
     if (provider.name === "meta") {
       headers["X-Meta-API-Key"] = provider.key;
       if (provider.extras.base_url) headers["X-Meta-Base-Url"] = provider.extras.base_url;
@@ -88,11 +91,6 @@ export function buildCompareHeaders(
 
   assign(left);
   assign(right);
-
-  const anthropicKey = getApiKey("anthropic");
-  if (anthropicKey && !headers["X-Anthropic-API-Key"]) {
-    headers["X-Anthropic-API-Key"] = anthropicKey;
-  }
 
   return headers;
 }

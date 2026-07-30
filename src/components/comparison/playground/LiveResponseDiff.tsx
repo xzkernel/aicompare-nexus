@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 type LiveResponseDiffProps = {
   divergenceScore: number;
   sharedLines: number;
@@ -27,80 +25,48 @@ export function LiveResponseDiff({
   leftGrounded,
   rightGrounded,
 }: LiveResponseDiffProps) {
-  const maxLatency = Math.max(leftLatency ?? 0, rightLatency ?? 0, 1);
-  const leftPct = leftLatency ? Math.min(100, (leftLatency / maxLatency) * 100) : isComparing ? 35 : 0;
-  const rightPct = rightLatency ? Math.min(100, (rightLatency / maxLatency) * 100) : isComparing ? 28 : 0;
-
-  if (!isComparing && !leftLatency && !rightLatency && divergenceScore === 0) {
-    return null;
-  }
+  if (!isComparing && !leftLatency && !rightLatency && divergenceScore === 0) return null;
 
   return (
-    <div className="border border-stroke-subtle bg-bg-soft/30 px-3 py-2">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="mw-label-mono text-text-muted">Live divergence analysis</span>
-        <span className="font-mono text-[11px] text-accent-cyan">{divergenceScore}% structural delta</span>
+    <div className="flex flex-col gap-2 border border-stroke-subtle bg-bg-soft/25 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <span className="mw-label-mono text-text-muted">Analysis</span>
+        <span className="font-mono text-[10px] text-text-secondary">
+          {isComparing ? "Live" : "Complete"}
+        </span>
       </div>
-
-      <div className="mb-2 grid grid-cols-2 gap-3">
-        <LatencyBar label="Model A" pct={leftPct} active={isComparing && !leftLatency} ms={leftLatency} />
-        <LatencyBar label="Model B" pct={rightPct} active={isComparing && !rightLatency} ms={rightLatency} />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <AnalysisMetric label="Delta" value={`${divergenceScore}%`} accent={divergenceScore > 30} />
+        <AnalysisMetric label="Aligned" value={`${sharedLines}/${totalLines}`} />
+        <AnalysisMetric label="A" value={leftLatency ? `${Math.round(leftLatency)}ms` : "..."} />
+        <AnalysisMetric label="B" value={rightLatency ? `${Math.round(rightLatency)}ms` : "..."} />
+        {searchParityBreak && <AnalysisMetric label="Search" value="Asymmetric" warning />}
+        {groundedMismatch && !searchParityBreak && <AnalysisMetric label="Grounding" value="Mismatch" warning />}
+        {citationOverlapPct != null && (leftGrounded || rightGrounded) && (
+          <AnalysisMetric label="Citations" value={`${citationOverlapPct}%`} />
+        )}
       </div>
-
-      <p className="font-mono text-[10px] text-text-muted">
-        {sharedLines}/{totalLines} aligned segments · divergent lines highlighted in output panels
-        {searchParityBreak && (
-          <span className="text-accent-yellow">
-            {" "}
-            · search parity broken — one model used native search, one did not
-          </span>
-        )}
-        {groundedMismatch && !searchParityBreak && (
-          <span className="text-accent-yellow">
-            {" "}
-            · factual divergence: one model grounded, one not (
-            {leftGrounded ? "A grounded" : "A not grounded"} /{" "}
-            {rightGrounded ? "B grounded" : "B not grounded"})
-          </span>
-        )}
-        {citationOverlapPct != null &&
-          (leftGrounded || rightGrounded) &&
-          citationOverlapPct < 100 && (
-            <span className="text-accent-cyan/80"> · citation overlap {citationOverlapPct}%</span>
-          )}
-      </p>
     </div>
   );
 }
 
-function LatencyBar({
+function AnalysisMetric({
   label,
-  pct,
-  active,
-  ms,
+  value,
+  accent,
+  warning,
 }: {
   label: string;
-  pct: number;
-  active?: boolean;
-  ms?: number;
+  value: string;
+  accent?: boolean;
+  warning?: boolean;
 }) {
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between font-mono text-[10px] text-text-muted">
-        <span>{label}</span>
-        <span className={cn(ms !== undefined && "text-accent-cyan")}>
-          {ms !== undefined ? `${Math.round(ms)}ms` : active ? "…" : "—"}
-        </span>
-      </div>
-      <div className="h-1 overflow-hidden rounded-full bg-bg-paper">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-base",
-            active ? "animate-pulse bg-accent-cyan/40" : "bg-accent-cyan/70"
-          )}
-          style={{ width: `${Math.max(pct, active ? 20 : 0)}%` }}
-        />
-      </div>
+    <div className="flex items-center gap-1.5 font-mono text-[10px]">
+      <span className="uppercase tracking-wider text-text-muted">{label}</span>
+      <span className={warning ? "text-accent-yellow" : accent ? "text-accent-cyan" : "text-text-secondary"}>
+        {value}
+      </span>
     </div>
   );
 }

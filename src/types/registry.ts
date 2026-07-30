@@ -3,7 +3,14 @@
  * @see docs/REGISTRY.md
  */
 
-export type RegistryProviderId = "openai" | "google" | "anthropic" | "meta" | "custom";
+export type RegistryProviderId =
+  | "openai"
+  | "google"
+  | "anthropic"
+  | "opencode-go"
+  | "opencode-zen"
+  | "meta"
+  | "custom";
 
 export interface RegistryModel {
   id: string;
@@ -19,7 +26,7 @@ export interface RegistryModel {
   relaySupported: boolean;
   openRouterId?: string | null;
   typicalLatency?: string;
-  source?: "catalog" | "openrouter";
+  source?: "catalog" | "openrouter" | "opencode";
 }
 
 export interface RegistryProvider {
@@ -36,6 +43,8 @@ export interface ModelRegistryResponse {
   streaming: boolean;
   byok: boolean;
   openRouterHydrated?: boolean;
+  openCodeGoHydrated?: boolean;
+  openCodeZenHydrated?: boolean;
   providers: RegistryProvider[];
   modelCount?: number;
   degraded?: boolean;

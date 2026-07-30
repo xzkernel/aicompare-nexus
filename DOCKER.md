@@ -39,6 +39,5 @@ docker compose build --no-cache
 
 - Frontend nginx proxies `/api` and `/health` to the backend service
 - BYOK keys are **not** passed via Docker env — users enter keys in the browser
-- Optional `OPENROUTER_API_KEY` in compose env expands server-side model catalog
 
 Full guide: [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md)
