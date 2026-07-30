@@ -17,6 +17,12 @@ Optional base URL:
 MW_BASE_URL=http://127.0.0.1:8080 npm run screenshots
 ```
 
+Use an installed browser channel instead of Playwright's bundled Chromium when needed:
+
+```bash
+MW_BROWSER_CHANNEL=chrome npm run screenshots
+```
+
 ## Files
 
 | File | Route | Notes |

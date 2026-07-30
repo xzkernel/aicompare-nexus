@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, "..", "docs", "screenshots");
 const BASE = process.env.MW_BASE_URL || "http://localhost:8080";
+const BROWSER_CHANNEL = process.env.MW_BROWSER_CHANNEL;
 
 const shots = [
   { name: "playground", path: "/playground", wait: 1500 },
@@ -20,7 +21,7 @@ const shots = [
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_CHANNEL ? { channel: BROWSER_CHANNEL } : undefined);
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
   for (const shot of shots) {
@@ -30,7 +31,7 @@ async function main() {
     await page.waitForTimeout(shot.wait);
 
     if (shot.action === "open-model-picker") {
-      const trigger = page.locator('[role="combobox"]').first();
+      const trigger = page.locator('button[aria-haspopup="listbox"]').first();
       if (await trigger.count()) {
         await trigger.click();
         await page.waitForTimeout(600);
