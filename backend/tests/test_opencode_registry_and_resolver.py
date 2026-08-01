@@ -66,7 +66,7 @@ def test_go_live_hydration_filters_unsupported_models(monkeypatch, caplog):
         async def get(self, url):
             return FakeResponse()
 
-    monkeypatch.setattr(registry_service.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(registry_service, "outbound_client", lambda *_args, **_kwargs: FakeClient())
     caplog.set_level(logging.DEBUG, logger=registry_service.__name__)
 
     models = asyncio.run(_fetch_opencode_models("opencode-go"))
@@ -107,7 +107,7 @@ def test_live_capabilities_are_conservative_and_free_requires_suffix(monkeypatch
         async def get(self, url):
             return FakeResponse()
 
-    monkeypatch.setattr(registry_service.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(registry_service, "outbound_client", lambda *_args, **_kwargs: FakeClient())
 
     models = asyncio.run(_fetch_opencode_models("opencode-zen"))
 
@@ -184,7 +184,7 @@ def test_openrouter_free_variant_is_detected(monkeypatch):
         async def get(self, url):
             return FakeResponse()
 
-    monkeypatch.setattr(registry_service.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(registry_service, "outbound_client", lambda *_args, **_kwargs: FakeClient())
 
     models = asyncio.run(registry_service._fetch_openrouter_models())
     assert len(models) == 2

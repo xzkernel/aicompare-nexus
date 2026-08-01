@@ -3,6 +3,7 @@ import { Pin, PinOff, Trash2, ExternalLink } from "lucide-react";
 import { useComparisonSessions } from "@/hooks/use-comparison-sessions";
 import { cn } from "@/lib/utils";
 import { getModelDisplayName } from "@/lib/model-registry";
+import { useLocale } from "@/contexts/LocaleProvider";
 
 function formatModel(model: string) {
   return getModelDisplayName(model);
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function ComparisonSessionList({ compact, limit = 12 }: Props) {
+  const { locale } = useLocale();
   const { sessions, remove, togglePin, clearAll } = useComparisonSessions();
   const shown = sessions.slice(0, limit);
 
@@ -60,7 +62,7 @@ export function ComparisonSessionList({ compact, limit = 12 }: Props) {
                   : ""}
               </p>
               <p className="font-mono text-[10px] text-text-muted">
-                {new Date(s.timestamp).toLocaleString()}
+                {new Date(s.timestamp).toLocaleString(locale)}
                 {formatVerdict(s.verdict) ? ` · ${formatVerdict(s.verdict)}` : ""}
               </p>
             </div>
@@ -74,7 +76,7 @@ export function ComparisonSessionList({ compact, limit = 12 }: Props) {
                 {s.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
               </button>
               <Link
-                to={`/playground?session=${s.id}`}
+                to={{ pathname: "/playground", search: new URLSearchParams({ session: s.id }).toString() }}
                 className="p-1 text-accent-cyan hover:text-accent-cyan/80"
                 aria-label="Reopen"
               >

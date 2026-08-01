@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useRef, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "./settings-sections";
@@ -11,9 +12,6 @@ type SettingsLayoutProps = {
   children: React.ReactNode;
 };
 
-/**
- * Stitch layout: "Control Center" heading + horizontal tab row, full-width content below.
- */
 export function SettingsLayout({
   activeSection,
   onSectionChange,
@@ -22,11 +20,28 @@ export function SettingsLayout({
   children,
 }: SettingsLayoutProps) {
   const { t } = useTranslation();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const selectTabFromKeyboard = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    const rtl = document.documentElement.dir === "rtl";
+    if (event.key === "ArrowRight") nextIndex = index + (rtl ? -1 : 1);
+    if (event.key === "ArrowLeft") nextIndex = index + (rtl ? 1 : -1);
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = SETTINGS_SECTION_IDS.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const wrappedIndex = (nextIndex + SETTINGS_SECTION_IDS.length) % SETTINGS_SECTION_IDS.length;
+    const sectionId = SETTINGS_SECTION_IDS[wrappedIndex];
+    onSectionChange(sectionId);
+    tabRefs.current[wrappedIndex]?.focus();
+  };
 
   return (
     <div>
-      <div className="mb-[24px] flex items-end justify-between border-b border-white/[0.06] pb-[16px]">
-        <div>
+      <div className="mb-[24px] flex min-w-0 flex-col gap-3 border-b border-white/[0.06] pb-[16px] sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h2 className="font-mono text-2xl font-bold text-white">{t("settings.controlCenter")}</h2>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-white/50">
             {t("settings.subtitle")} ·{" "}
@@ -35,14 +50,21 @@ export function SettingsLayout({
           </p>
         </div>
 
-        <div className="flex border border-white/[0.06] bg-[#0e0e0e] p-1">
-          {SETTINGS_SECTION_IDS.map((sectionId) => (
+        <div className="flex max-w-full overflow-x-auto border border-white/[0.06] bg-[#0e0e0e] p-1" role="tablist" aria-orientation="horizontal" aria-label={t("settings.sectionsLabel")}>
+          {SETTINGS_SECTION_IDS.map((sectionId, index) => (
             <button
+              ref={(node) => { tabRefs.current[index] = node; }}
               key={sectionId}
+              id={`settings-tab-${sectionId}`}
               type="button"
+              role="tab"
+              aria-selected={activeSection === sectionId}
+              aria-controls={`settings-panel-${sectionId}`}
+              tabIndex={activeSection === sectionId ? 0 : -1}
               onClick={() => onSectionChange(sectionId)}
+              onKeyDown={(event) => selectTabFromKeyboard(event, index)}
               className={cn(
-                "px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                "shrink-0 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
                 activeSection === sectionId
                   ? "border border-[#5de6ff]/20 bg-white/5 text-[#5de6ff]"
                   : "text-white/50 hover:text-white"
@@ -54,8 +76,14 @@ export function SettingsLayout({
         </div>
       </div>
 
-      {/* Full-width content */}
-      <div>{children}</div>
+      <div
+        id={`settings-panel-${activeSection}`}
+        role="tabpanel"
+        aria-labelledby={`settings-tab-${activeSection}`}
+        tabIndex={0}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -80,7 +108,7 @@ export function SettingsPanel({
       <header className="flex items-start justify-between gap-3 border-b border-stroke-subtle px-3 py-2.5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            {Icon && <Icon className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.75} />}
+            {Icon && <Icon aria-hidden="true" className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.75} />}
             <h2 className="font-mono text-[12px] text-text-primary">{title}</h2>
           </div>
           {description && <p className="mt-0.5 font-mono text-[10px] text-text-muted">{description}</p>}
@@ -159,12 +187,13 @@ export function SettingsKeyField({
         <input
           id={id}
           type={!hideable || visible ? "text" : "password"}
+          dir={hideable ? "ltr" : undefined}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
             "w-full border border-stroke-subtle bg-bg-soft px-3 py-2 font-mono text-[12px] text-text-primary placeholder:text-text-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan/40",
-            hideable && "pr-16"
+            hideable && "pe-16"
           )}
           autoComplete="off"
         />
@@ -172,7 +201,8 @@ export function SettingsKeyField({
           <button
             type="button"
             onClick={onToggleVisible}
-            className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-muted hover:text-text-primary"
+            className="absolute end-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-muted hover:text-text-primary"
+            aria-label={visible ? `Hide ${label}` : `Show ${label}`}
           >
             {visible ? "hide" : "show"}
           </button>

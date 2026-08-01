@@ -33,8 +33,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const prefs = await getPreferencesRecord();
-      const stored = prefs.locale ?? "en";
+      const prefs = await getPreferencesRecord().catch(() => null);
+      const stored = prefs?.locale ?? "en";
       const next = isAppLocale(stored) ? stored : "en";
       if (!cancelled) {
         await i18n.changeLanguage(next);
@@ -52,7 +52,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     await i18n.changeLanguage(next);
     applyDocumentLocale(next);
     setLocaleState(next);
-    await patchPreferencesRecord({ locale: next });
+    await patchPreferencesRecord({ locale: next }).catch(() => undefined);
   }, []);
 
   const value = useMemo(

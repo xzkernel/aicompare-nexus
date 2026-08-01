@@ -16,7 +16,7 @@ load_dotenv(backend_env)
 from config import ENABLE_API_DOCS, IS_PRODUCTION
 from routes import compare, stream, health, models
 from middleware import RateLimitMiddleware, RequestSizeLimitMiddleware
-from security import SecurityMiddleware
+from security import SecurityMiddleware, shutdown_dns_executor, startup_dns_executor
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,9 +27,13 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    startup_dns_executor()
     logger.info("ModelWise API starting (BYOK / local-first, env=%s)", "production" if IS_PRODUCTION else "development")
-    yield
-    logger.info("ModelWise API shutdown")
+    try:
+        yield
+    finally:
+        await shutdown_dns_executor()
+        logger.info("ModelWise API shutdown")
 
 
 def create_app() -> FastAPI:
@@ -52,13 +56,24 @@ def create_app() -> FastAPI:
         "http://localhost:8080,http://localhost:5173,http://127.0.0.1:8080",
     ).split(",")
     parsed_origins = [o.strip() for o in cors_origins if o.strip()]
+    if "*" in parsed_origins:
+        raise ValueError("CORS_ORIGINS must not contain '*' when credentials are enabled")
 
-    app.add_middleware(
-        CORSMiddleware,
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestSizeLimitMiddleware)
+
+    app.include_router(health.router)
+    app.include_router(compare.router)
+    app.include_router(stream.router)
+    app.include_router(models.router)
+
+    # Wrap the completed FastAPI stack so generated 500 responses also receive
+    # security and CORS headers before ServerErrorMiddleware re-raises.
+    app.middleware_stack = CORSMiddleware(
+        SecurityMiddleware(app.build_middleware_stack()),
         allow_origins=parsed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
-        # Explicit allowlist — never use "*" with credentials (A05 Security Misconfiguration)
         allow_headers=[
             "Content-Type",
             "Accept",
@@ -74,14 +89,6 @@ def create_app() -> FastAPI:
             "X-Custom-Key-Header",
         ],
     )
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(RequestSizeLimitMiddleware)
-    app.add_middleware(SecurityMiddleware, allowed_origins=parsed_origins)
-
-    app.include_router(health.router)
-    app.include_router(compare.router)
-    app.include_router(stream.router)
-    app.include_router(models.router)
 
     return app
 

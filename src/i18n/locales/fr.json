@@ -31,9 +31,24 @@
     "controlCenter": "Centre de contrôle",
     "subtitle": "Gestion de l'infrastructure locale",
     "routesConfigured": "{{count}} route configurée",
-    "routesConfigured_plural": "{{count}} routes configurées",
+    "routesConfigured_other": "{{count}} routes configurées",
     "keyPresent": "CLÉ PRÉSENTE",
     "keysRequired": "CLÉS REQUISES",
+    "sectionsLabel": "Sections des paramètres",
+    "api": {
+      "routeConfigured": "Au moins une route est configurée pour les requêtes du terrain de jeu.",
+      "noRoutes": "Aucune route de clé API n'est configurée. Ajoutez des identifiants pour activer l'évaluation.",
+      "googleOpenRouter": "Gemini passe par OpenRouter avec la clé de relais ci-dessous.",
+      "claudeOpenRouter": "Claude passe par OpenRouter avec la clé de relais ci-dessous.",
+      "openRouterRequired": "OpenRouter est requis tant que Gemini ou Claude utilise ce mode de routage."
+    },
+    "vault": {
+      "strongerPassword": "Mot de passe plus robuste requis",
+      "passwordMinimum": "Utilisez au moins {{count}} caractères."
+    },
+    "storage": {
+      "autoSave": "Les comparaisons terminées sont automatiquement enregistrées dans IndexedDB"
+    },
     "sections": {
       "providers": { "label": "Fournisseurs", "description": "Vue d'ensemble de la configuration" },
       "api-keys": { "label": "Clés API", "description": "Identifiants et routage" },
@@ -42,9 +57,24 @@
       "security": { "label": "Sécurité", "description": "Confidentialité et isolation" }
     }
   },
+  "sessions": {
+    "importSuccess": "Importation terminée",
+    "importResult": "{{imported}} session(s) importée(s) ; {{skipped}} ignorée(s) pour préserver l'historique existant.",
+    "importFailed": "Échec de l'importation",
+    "importFailedDescription": "La sauvegarde n'a pas pu être importée. Vérifiez son format.",
+    "fileTooLarge": "Le fichier dépasse la limite de 5 Mo.",
+    "noValidSessions": "Aucune session valide n'a été trouvée.",
+    "rowLimit": "Une importation peut contenir au maximum {{count}} sessions."
+  },
+  "markdown": {
+    "codeCopied": "Code copié",
+    "copyFailed": "Échec de la copie",
+    "copyCode": "Copier le code",
+    "remoteImageBlocked": "Image distante bloquée"
+  },
   "playground": {
     "promptWorkspace": "Espace de prompt",
-    "charTokens": "{{chars}}/4000 · ~{{tokens}} jetons",
+    "charTokens": "{{chars}}/{{max}} · ~{{tokens}} jetons",
     "clearPrompt": "Effacer le prompt",
     "cancel": "Annuler",
     "runComparison": "Lancer la comparaison",
@@ -84,6 +114,7 @@
     "blocking": {
       "inProgress": "Comparaison en cours",
       "enterPrompt": "Saisissez un prompt à comparer",
+      "promptTooLong": "Le prompt doit contenir au maximum 32 000 caractères",
       "selectModelA": "Sélectionnez un modèle pour le côté A",
       "selectModelB": "Sélectionnez un modèle pour le côté B",
       "addKeys": "Ajoutez des clés API pour au moins un modèle dans Paramètres"

@@ -2,12 +2,14 @@
 
 FastAPI backend for BYOK AI model comparison and streaming.
 
+Requires Python 3.11.
+
 **Full documentation:** [../README.md](../README.md) · [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)
 
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 cp env.env.example env.env   # optional
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
@@ -28,6 +30,15 @@ python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 
 See [env.env.example](./env.env.example). BYOK mode requires **no server-side API keys**.
 
+## Tests
+
+Install the hashed development lock before running the test suite:
+
+```bash
+python -m pip install --require-hashes -r requirements-dev.lock
+python -m pytest
+```
+
 ## Docker
 
 ```bash
@@ -35,4 +46,4 @@ docker build -t modelwise-backend .
 docker run -p 8001:8001 modelwise-backend
 ```
 
-Port **8001** matches the Vite dev proxy and production nginx config.
+Run these commands from `backend/`. The image uses Python 3.11 and exposes plain HTTP on port **8001**, matching the Vite development proxy and production nginx upstream.

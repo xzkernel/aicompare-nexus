@@ -5,7 +5,6 @@ import time
 from collections import defaultdict
 from typing import Dict, Tuple
 
-from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
@@ -89,12 +88,12 @@ class RateLimiter:
         self.minute_requests: Dict[str, list] = defaultdict(list)
         self.hour_requests: Dict[str, list] = defaultdict(list)
         self.lock = asyncio.Lock()
-        self._last_gc = time.time()
+        self._last_gc = time.monotonic()
     
     async def is_allowed(self, client_ip: str) -> Tuple[bool, Dict[str, int]]:
         """Check if request is allowed and return remaining limits"""
         async with self.lock:
-            current_time = time.time()
+            current_time = time.monotonic()
             
             # Clean old entries for current IP
             self._cleanup_old_requests(client_ip, current_time)
@@ -143,11 +142,13 @@ class RateLimiter:
         ]
     
     def _sweep_idle_ips(self, current_time: float):
-        """Periodically remove IPs with no remaining requests to prevent unbounded memory growth."""
+        """Expire timestamps for every identity and remove empty buckets."""
         if current_time - self._last_gc < 60:
             return
         self._last_gc = current_time
-        for d in (self.minute_requests, self.hour_requests):
+        for d, window in ((self.minute_requests, 60), (self.hour_requests, 3600)):
+            for ip, times in list(d.items()):
+                d[ip] = [timestamp for timestamp in times if current_time - timestamp < window]
             stale = [ip for ip, times in d.items() if not times]
             for ip in stale:
                 del d[ip]
@@ -162,82 +163,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Fail-open ASGI middleware for rate limiting that never crashes the app"""
     
     async def dispatch(self, request: StarletteRequest, call_next):
-        try:
-            # Skip excluded paths and methods
-            if request.url.path in EXCLUDED_PATHS or request.method in EXCLUDED_METHODS:
-                logger.debug(f"Skipping rate limit for {request.method} {request.url.path}")
-                return await call_next(request)
-
-            # Get client IP (handle proxy headers and Windows edge cases)
-            ip = get_client_ip(request)
-            
-            logger.debug(f"Rate limiting IP: {ip}")
-            
-            # Check rate limit
-            is_allowed, limits = await rate_limiter.is_allowed(ip)
-            
-            if not is_allowed:
-                logger.warning(f"Rate limit exceeded for {ip}")
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Rate limit exceeded"},
-                    headers={
-                        "Retry-After": "60",
-                        "X-RateLimit-Limit-Minute": str(rate_limiter.requests_per_minute),
-                        "X-RateLimit-Limit-Hour": str(rate_limiter.requests_per_hour),
-                        "X-RateLimit-Remaining-Minute": str(limits["minute_remaining"]),
-                        "X-RateLimit-Remaining-Hour": str(limits["hour_remaining"]),
-                        "X-Content-Type-Options": "nosniff",
-                        "X-Frame-Options": "DENY",
-                        "Referrer-Policy": "strict-origin-when-cross-origin",
-                    }
-                )
-            
-            # Skip body handling for now to avoid middleware issues
-            # The request body will be handled normally by FastAPI
-            
-            # Process request and add rate limit headers to response
-            response = await call_next(request)
-            response.headers["X-RateLimit-Limit-Minute"] = str(rate_limiter.requests_per_minute)
-            response.headers["X-RateLimit-Limit-Hour"] = str(rate_limiter.requests_per_hour)
-            response.headers["X-RateLimit-Remaining-Minute"] = str(limits["minute_remaining"])
-            response.headers["X-RateLimit-Remaining-Hour"] = str(limits["hour_remaining"])
-            
-            return response
-            
-        except Exception as e:
-            # Never crash the stack from within middleware
-            # Log the error and allow request to proceed rather than 500-ing
-            logger.error("Rate limit middleware error: %s", redact_sensitive_data(str(e)))
-            
-            # Fallback: allow request to proceed
-            try:
-                return await call_next(request)
-            except Exception as fallback_error:
-                logger.error("Fallback call_next also failed: %s", redact_sensitive_data(str(fallback_error)))
-                # Last resort: return a generic error response
-                return JSONResponse(
-                    status_code=500,
-                    content={"detail": "Internal server error in rate limiting"}
-                )
-
-# Legacy function-based middleware for backward compatibility
-async def rate_limit_middleware(request: Request, call_next):
-    """Legacy rate limiting middleware for FastAPI that never crashes the app"""
-    try:
-        # Skip excluded paths and methods
         if request.url.path in EXCLUDED_PATHS or request.method in EXCLUDED_METHODS:
-            logger.debug(f"Skipping rate limit for {request.method} {request.url.path}")
             return await call_next(request)
 
-        # Get client IP (handle proxy headers and Windows edge cases)
-        ip = get_client_ip(request)
-        
-        logger.debug(f"Rate limiting IP: {ip}")
-        
-        # Check rate limit
-        is_allowed, limits = await rate_limiter.is_allowed(ip)
-        
+        try:
+            ip = get_client_ip(request)
+            is_allowed, limits = await rate_limiter.is_allowed(ip)
+        except Exception as e:
+            logger.error("Rate limit middleware error: %s", redact_sensitive_data(str(e)))
+            return await call_next(request)
+
         if not is_allowed:
             logger.warning(f"Rate limit exceeded for {ip}")
             return JSONResponse(
@@ -248,34 +183,14 @@ async def rate_limit_middleware(request: Request, call_next):
                     "X-RateLimit-Limit-Minute": str(rate_limiter.requests_per_minute),
                     "X-RateLimit-Limit-Hour": str(rate_limiter.requests_per_hour),
                     "X-RateLimit-Remaining-Minute": str(limits["minute_remaining"]),
-                    "X-RateLimit-Remaining-Hour": str(limits["hour_remaining"])
+                    "X-RateLimit-Remaining-Hour": str(limits["hour_remaining"]),
                 }
             )
-        
-        # Skip body handling for now to avoid middleware issues
-        # The request body will be handled normally by FastAPI
-        
-        # Process request and add rate limit headers to response
+
+        # Downstream exceptions must propagate; retrying call_next can execute side effects twice.
         response = await call_next(request)
         response.headers["X-RateLimit-Limit-Minute"] = str(rate_limiter.requests_per_minute)
         response.headers["X-RateLimit-Limit-Hour"] = str(rate_limiter.requests_per_hour)
         response.headers["X-RateLimit-Remaining-Minute"] = str(limits["minute_remaining"])
         response.headers["X-RateLimit-Remaining-Hour"] = str(limits["hour_remaining"])
-        
         return response
-        
-    except Exception as e:
-        # Never crash the stack from within middleware
-        # Log the error and allow request to proceed rather than 500-ing
-        logger.error("Rate limit middleware error: %s", redact_sensitive_data(str(e)))
-        
-        # Fallback: allow request to proceed
-        try:
-            return await call_next(request)
-        except Exception as fallback_error:
-            logger.error("Fallback call_next also failed: %s", redact_sensitive_data(str(fallback_error)))
-            # Last resort: return a generic error response
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "Internal server error in rate limiting"}
-            )

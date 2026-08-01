@@ -5,7 +5,7 @@ ModelWise is a **local-first BYOK evaluation workbench**: React frontend + FastA
 ## Repository layout
 
 ```
-modelwise/
+aicompare-nexus/
 ├── src/                    # React frontend (Vite)
 │   ├── components/         # UI (playground, landing, settings)
 │   ├── lib/                # compare-stream, model-registry, session-store
@@ -20,8 +20,6 @@ modelwise/
 │   └── utils/              # BYOK headers, model_resolver
 └── docs/                   # Architecture, streaming, registry, providers
 ```
-
-> **Note:** The top-level `app/` directory is a **deprecated** legacy backend. Use `backend/` only.
 
 ## Request paths
 

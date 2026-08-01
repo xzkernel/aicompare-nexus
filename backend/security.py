@@ -18,48 +18,42 @@ import socket
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Iterable, List, Optional
+from threading import Lock
+from typing import Iterable, Optional
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 import httpcore
 import httpx
-from fastapi import Request, Response
 from httpcore._backends.auto import AutoBackend
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 
 logger = logging.getLogger(__name__)
 
 
-class SecurityMiddleware(BaseHTTPMiddleware):
-    """Adds security response headers to every API response."""
+class SecurityMiddleware:
+    """Pure ASGI middleware that adds security headers to every HTTP response."""
 
-    def __init__(self, app, allowed_origins: List[str] = None):
-        super().__init__(app)
-        self.allowed_origins = allowed_origins or []
+    def __init__(self, app):
+        self.app = app
 
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        self._add_security_headers(response)
-        return response
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-    def _add_security_headers(self, response: Response):
-        """Add security headers to every response.
+        async def send_with_security_headers(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+                headers["X-Frame-Options"] = "DENY"
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["Referrer-Policy"] = "no-referrer"
+                headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+                if "Cache-Control" not in headers:
+                    headers["Cache-Control"] = "no-store"
+            await send(message)
 
-        CSP note: the API backend serves JSON/SSE only, never HTML.
-        The frontend (Vite/React SPA) has its own CSP via vite.config or nginx.
-        Here we provide defence-in-depth headers for the API surface.
-        """
-        csp = (
-            "default-src 'none'; "
-            "frame-ancestors 'none'"
-        )
-
-        response.headers["Content-Security-Policy"] = csp
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        # Instruct browsers not to cache API responses containing secrets
-        response.headers.setdefault("Cache-Control", "no-store")
+        await self.app(scope, receive, send_with_security_headers)
 
 
 def classify_provider_error(exc: Exception) -> str:
@@ -83,7 +77,23 @@ _ALLOWED_KEY_HEADERS = {
     "api-key": "api-key",
 }
 MAX_UPSTREAM_RESPONSE_BYTES = 4 * 1024 * 1024
-_DNS_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="outbound-dns")
+_DNS_EXECUTOR: ThreadPoolExecutor | None = None
+_DNS_EXECUTOR_LOCK = Lock()
+
+
+def startup_dns_executor() -> None:
+    global _DNS_EXECUTOR
+    with _DNS_EXECUTOR_LOCK:
+        if _DNS_EXECUTOR is None:
+            _DNS_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="outbound-dns")
+
+
+async def shutdown_dns_executor() -> None:
+    global _DNS_EXECUTOR
+    with _DNS_EXECUTOR_LOCK:
+        executor, _DNS_EXECUTOR = _DNS_EXECUTOR, None
+    if executor is not None:
+        await asyncio.to_thread(executor.shutdown, True, cancel_futures=True)
 
 
 class UpstreamResponseTooLarge(Exception):
@@ -117,6 +127,7 @@ async def _resolve_public_addresses(
     not queried again between validation and the TCP connection.
     """
     try:
+        startup_dns_executor()
         loop = asyncio.get_running_loop()
         records = await asyncio.wait_for(
             loop.run_in_executor(
@@ -206,14 +217,14 @@ def validate_outbound_url(url: Optional[str]) -> str:
     if not url or not isinstance(url, str):
         raise ValueError("Outbound URL is required")
 
-    normalized = url.strip().rstrip("/")
+    normalized = url.strip()
     if len(normalized) > 512:
         raise ValueError("Outbound URL is too long")
+    if any(ord(char) < 33 for char in normalized) or "\\" in normalized:
+        raise ValueError("Outbound URL is malformed")
 
     try:
-        from urllib.parse import urlparse
-
-        parsed = urlparse(normalized)
+        parsed = urlsplit(normalized)
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
     except ValueError as exc:
         raise ValueError("Outbound URL is malformed") from exc
@@ -222,6 +233,8 @@ def validate_outbound_url(url: Optional[str]) -> str:
         raise ValueError("Outbound URL must use HTTPS")
     if parsed.username or parsed.password:
         raise ValueError("Outbound URL must not contain credentials")
+    if not parsed.netloc:
+        raise ValueError("Outbound URL is malformed")
 
     hostname = (parsed.hostname or "").lower().rstrip(".")
     if not hostname or hostname == "localhost":
@@ -235,12 +248,22 @@ def validate_outbound_url(url: Optional[str]) -> str:
         if not _is_public_address(str(literal_address)):
             raise ValueError("Outbound URL targets a private or reserved address")
 
-    return normalized
+    path = parsed.path.rstrip("/") or ""
+    return urlunsplit((parsed.scheme.lower(), parsed.netloc, path, parsed.query, parsed.fragment))
 
 
 def validate_relay_base_url(url: Optional[str]) -> str:
-    """Backward-compatible name for outbound SSRF validation."""
-    return validate_outbound_url(url)
+    """Validate a base URL that will have an API route appended."""
+    normalized = validate_outbound_url(url)
+    parsed = urlsplit(normalized)
+    if parsed.query or parsed.fragment:
+        raise ValueError("Outbound base URL must not contain a query or fragment")
+    decoded_path = unquote(parsed.path)
+    if any(part in {".", ".."} for part in decoded_path.split("/")):
+        raise ValueError("Outbound base URL path is malformed")
+    if decoded_path.lower().endswith(("/chat/completions", "/responses", "/messages")):
+        raise ValueError("Outbound base URL must not include an API operation path")
+    return normalized
 
 
 def normalize_outbound_key_header(value: Optional[str]) -> str:
@@ -324,39 +347,6 @@ async def read_limited_response(
     return b"".join(chunks)
 
 
-def sanitize_input(text: str) -> str:
-    """Sanitize user input to prevent XSS and injection attacks."""
-    if not text:
-        return ""
-    
-    # Replace & first to avoid double-encoding already-escaped entities
-    text = text.replace("&", "&amp;")
-    text = text.replace("<", "&lt;").replace(">", "&gt;")
-    text = text.replace('"', "&quot;").replace("'", "&#x27;")
-    
-    # Remove null bytes
-    text = text.replace("\x00", "")
-    
-    # Limit length
-    if len(text) > 10000:  # 10KB limit
-        text = text[:10000]
-    
-    return text
-
-def validate_api_key_format(api_key: str, provider: str) -> bool:
-    """Validate API key format for different providers."""
-    if not api_key or not isinstance(api_key, str):
-        return False
-    
-    api_key = api_key.strip()
-    
-    if provider.lower() == "openai":
-        return api_key.startswith("sk-") and len(api_key) > 20
-    elif provider.lower() == "gemini":
-        return api_key.startswith("AIza") and len(api_key) > 20
-    else:
-        return False
-
 def redact_sensitive_data(text: str) -> str:
     """Redact sensitive data from logs and error messages."""
     if not text:
@@ -387,58 +377,7 @@ def redact_sensitive_data(text: str) -> str:
     return text
 
 
-def log_provider_error(context: str, exc: Exception, upstream_body: bytes | str | None = None) -> None:
-    """Log only bounded, redacted upstream failures."""
+def log_provider_error(context: str, exc: Exception) -> None:
+    """Log a redacted failure without upstream response bodies."""
     detail = redact_sensitive_data(str(exc))
-    if upstream_body:
-        if isinstance(upstream_body, bytes):
-            upstream_body = upstream_body.decode("utf-8", errors="replace")
-        detail = f"{detail}; upstream={redact_sensitive_data(upstream_body[:500])}"
     logger.error("%s: %s", context, detail)
-
-class InputValidator:
-    """Input validation utilities."""
-    
-    @staticmethod
-    def validate_prompt(prompt: str) -> tuple[bool, str]:
-        """Validate prompt input."""
-        if not prompt or not isinstance(prompt, str):
-            return False, "Prompt is required"
-        
-        prompt = prompt.strip()
-        
-        if len(prompt) < 1:
-            return False, "Prompt cannot be empty"
-        
-        if len(prompt) > 10000:
-            return False, "Prompt is too long (max 10,000 characters)"
-        
-        # Check for suspicious patterns
-        suspicious_patterns = [
-            r'<script[^>]*>',
-            r'javascript:',
-            r'data:text/html',
-        ]
-        
-        for pattern in suspicious_patterns:
-            if re.search(pattern, prompt, re.IGNORECASE):
-                return False, "Prompt contains potentially unsafe content"
-        
-        return True, ""
-    
-    @staticmethod
-    def validate_model_name(model: str) -> tuple[bool, str]:
-        """Validate model name."""
-        if not model or not isinstance(model, str):
-            return False, "Model name is required"
-        
-        model = model.strip()
-        
-        # Allow only alphanumeric, hyphens, underscores, and dots
-        if not re.match(r'^[a-zA-Z0-9\-_.]+$', model):
-            return False, "Invalid model name format"
-        
-        if len(model) > 100:
-            return False, "Model name is too long"
-        
-        return True, ""

@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useSyncExternalStore } from 'react';
 import type { ProviderId } from '@/config/providers';
+import { redactSensitiveText } from '@/lib/redact-error';
 
 // Updated interface with claudeProvider and googleProvider
 export interface ApiKeys {
@@ -34,9 +35,15 @@ export interface ApiKeyStatus {
 }
 
 export interface EncryptedKeyData {
+  version?: number;
   data: string;
   iv: string;
   salt: string;
+  kdf?: {
+    name: 'PBKDF2';
+    hash: 'SHA-256';
+    iterations: number;
+  };
 }
 
 // Legacy plaintext storage prefix. Values are migrated to memory and removed on read.
@@ -44,6 +51,16 @@ const STORAGE_PREFIX = 'modelwise-byok-keys-';
 const keyListeners = new Set<() => void>();
 const migratedProfiles = new Set<string>();
 const inMemoryProfiles = new Map<string, ApiKeys>();
+let legacyMigrationComplete = false;
+const CURRENT_VAULT_VERSION = 2;
+const LEGACY_PBKDF2_ITERATIONS = 100_000;
+const CURRENT_PBKDF2_ITERATIONS = 310_000;
+export const MIN_VAULT_PASSWORD_LENGTH = 12;
+const MAX_KEY_LENGTH = 16_384;
+
+export function isStrongVaultPassword(password: string): boolean {
+  return password.length >= MIN_VAULT_PASSWORD_LENGTH;
+}
 
 const emptyKeys = (): ApiKeys => ({
   openaiKey: '',
@@ -59,8 +76,65 @@ const emptyKeys = (): ApiKeys => ({
   },
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readString(record: Record<string, unknown>, key: string, fallback = ''): string {
+  const value = record[key];
+  if (value === undefined) return fallback;
+  if (typeof value !== 'string' || value.length > MAX_KEY_LENGTH) {
+    throw new Error(`Invalid ${key}`);
+  }
+  return value;
+}
+
+function validHeaderName(value: string): boolean {
+  return /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(value);
+}
+
+export function parseApiKeys(keys: unknown): ApiKeys {
+  if (!isRecord(keys)) throw new Error('Invalid API key data');
+  const claudeProvider = keys.claudeProvider ?? 'anthropic';
+  const googleProvider = keys.googleProvider ?? 'google';
+  const metaRelayProvider = keys.metaRelayProvider ?? 'openrouter';
+  if (claudeProvider !== 'anthropic' && claudeProvider !== 'openrouter') {
+    throw new Error('Invalid Claude provider');
+  }
+  if (googleProvider !== 'google' && googleProvider !== 'openrouter') {
+    throw new Error('Invalid Google provider');
+  }
+  if (metaRelayProvider !== 'openrouter' && metaRelayProvider !== 'together') {
+    throw new Error('Invalid relay provider');
+  }
+
+  let customApiConfig = { baseUrl: '', keyHeader: 'Authorization' };
+  if (keys.customApiConfig !== undefined) {
+    if (!isRecord(keys.customApiConfig)) throw new Error('Invalid custom API configuration');
+    const baseUrl = readString(keys.customApiConfig, 'baseUrl').trim();
+    const keyHeader = readString(keys.customApiConfig, 'keyHeader', 'Authorization').trim();
+    if (baseUrl && !hasValidCustomBaseUrl(baseUrl)) throw new Error('Invalid custom API base URL');
+    if (!validHeaderName(keyHeader)) throw new Error('Invalid custom API key header');
+    customApiConfig = { baseUrl, keyHeader };
+  }
+
+  return {
+    openaiKey: readString(keys, 'openaiKey'),
+    googleKey: readString(keys, 'googleKey'),
+    anthropicKey: readString(keys, 'anthropicKey'),
+    opencodeKey: readString(keys, 'opencodeKey'),
+    metaRelayKey: readString(keys, 'metaRelayKey'),
+    customApiKey: readString(keys, 'customApiKey'),
+    claudeProvider,
+    googleProvider,
+    metaRelayProvider,
+    customApiConfig,
+  };
+}
+
 function ensureApiKeysStructure(keys: unknown): ApiKeys {
   const k = keys as Partial<ApiKeys> | null | undefined;
+  const custom = isRecord(k?.customApiConfig) ? k.customApiConfig : undefined;
   return {
     openaiKey: k?.openaiKey || '',
     googleKey: k?.googleKey || '',
@@ -71,29 +145,46 @@ function ensureApiKeysStructure(keys: unknown): ApiKeys {
     claudeProvider: k?.claudeProvider || 'anthropic',
     googleProvider: k?.googleProvider || 'google',
     metaRelayProvider: k?.metaRelayProvider || 'openrouter',
-    customApiConfig: k?.customApiConfig || {
-      baseUrl: '',
-      keyHeader: 'Authorization',
+    customApiConfig: {
+      baseUrl: typeof custom?.baseUrl === 'string' ? custom.baseUrl : '',
+      keyHeader: typeof custom?.keyHeader === 'string' ? custom.keyHeader : 'Authorization',
     },
   };
 }
 
+function migrateLegacyProfiles(): void {
+  if (legacyMigrationComplete) return;
+
+  try {
+    const profileIds: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(STORAGE_PREFIX)) profileIds.push(key.slice(STORAGE_PREFIX.length));
+    }
+    for (const profileId of profileIds) {
+      const raw = localStorage.getItem(`${STORAGE_PREFIX}${profileId}`);
+      if (!raw) continue;
+      try {
+        inMemoryProfiles.set(profileId, parseApiKeys(JSON.parse(raw)));
+      } catch {
+        // Corrupt profiles are removed with the other legacy plaintext entries.
+      }
+      migratedProfiles.add(profileId);
+    }
+    if (removeLegacyKeysFromStorage()) legacyMigrationComplete = true;
+  } catch {
+    // Browsers may deny access to localStorage.
+  }
+}
+
 function migrateLegacyKeys(profileId: string): ApiKeys {
+  migrateLegacyProfiles();
   const existing = inMemoryProfiles.get(profileId);
   if (existing) return existing;
   if (migratedProfiles.has(profileId)) return emptyKeys();
 
   migratedProfiles.add(profileId);
-  let keys = emptyKeys();
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${profileId}`);
-    if (raw) keys = ensureApiKeysStructure(JSON.parse(raw));
-  } catch {
-    /* ignore corrupt storage */
-  } finally {
-    removeLegacyKeysFromStorage();
-  }
-
+  const keys = emptyKeys();
   inMemoryProfiles.set(profileId, keys);
   return keys;
 }
@@ -106,14 +197,15 @@ function removeKeysFromStorage(profileId: string): void {
   }
 }
 
-function removeLegacyKeysFromStorage(): void {
+function removeLegacyKeysFromStorage(): boolean {
   try {
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index);
       if (key?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
     }
+    return true;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
@@ -142,7 +234,11 @@ function applyKeys(profileId: string, keys: ApiKeys): void {
 
 // WebCrypto utilities for encryption
 class CryptoUtils {
-  private static async deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  private static async deriveKey(
+    password: string,
+    salt: Uint8Array,
+    iterations: number
+  ): Promise<CryptoKey> {
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
@@ -156,7 +252,7 @@ class CryptoUtils {
       {
         name: 'PBKDF2',
         salt: salt,
-        iterations: 100000,
+        iterations,
         hash: 'SHA-256'
       },
       keyMaterial,
@@ -167,11 +263,14 @@ class CryptoUtils {
   }
 
   static async encrypt(data: string, password: string): Promise<EncryptedKeyData> {
+    if (!isStrongVaultPassword(password)) {
+      throw new Error(`Password must be at least ${MIN_VAULT_PASSWORD_LENGTH} characters`);
+    }
     const encoder = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     
-    const key = await this.deriveKey(password, salt);
+    const key = await this.deriveKey(password, salt, CURRENT_PBKDF2_ITERATIONS);
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: iv },
       key,
@@ -179,26 +278,38 @@ class CryptoUtils {
     );
 
     return {
+      version: CURRENT_VAULT_VERSION,
       data: Array.from(new Uint8Array(encrypted))
         .map(b => b.toString(16).padStart(2, '0'))
         .join(''),
       iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join(''),
-      salt: Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('')
+      salt: Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''),
+      kdf: {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        iterations: CURRENT_PBKDF2_ITERATIONS,
+      },
     };
   }
 
   static async decrypt(encryptedData: EncryptedKeyData, password: string): Promise<string> {
-    const salt = new Uint8Array(
-      encryptedData.salt.match(/.{2}/g)!.map(byte => parseInt(byte, 16))
-    );
-    const iv = new Uint8Array(
-      encryptedData.iv.match(/.{2}/g)!.map(byte => parseInt(byte, 16))
-    );
-    const data = new Uint8Array(
-      encryptedData.data.match(/.{2}/g)!.map(byte => parseInt(byte, 16))
-    );
+    const fromHex = (value: string): Uint8Array => {
+      if (!value || value.length % 2 !== 0 || !/^[a-f\d]+$/i.test(value)) {
+        throw new Error('Invalid encrypted vault');
+      }
+      return new Uint8Array(value.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) ?? []);
+    };
+    const salt = fromHex(encryptedData.salt);
+    const iv = fromHex(encryptedData.iv);
+    const data = fromHex(encryptedData.data);
+    const iterations = encryptedData.version === CURRENT_VAULT_VERSION
+      ? encryptedData.kdf?.iterations
+      : LEGACY_PBKDF2_ITERATIONS;
+    if (!iterations || iterations < LEGACY_PBKDF2_ITERATIONS || iterations > 2_000_000) {
+      throw new Error('Unsupported encrypted vault KDF');
+    }
 
-    const key = await this.deriveKey(password, salt);
+    const key = await this.deriveKey(password, salt, iterations);
     const decrypted = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: iv },
       key,
@@ -207,6 +318,41 @@ class CryptoUtils {
 
     return new TextDecoder().decode(decrypted);
   }
+}
+
+export function parseEncryptedKeyData(value: unknown): EncryptedKeyData {
+  if (!isRecord(value)) throw new Error('Invalid encrypted vault');
+  const version = value.version;
+  if (version !== undefined && version !== CURRENT_VAULT_VERSION) {
+    throw new Error('Unsupported encrypted vault version');
+  }
+  const data = readString(value, 'data');
+  const iv = readString(value, 'iv');
+  const salt = readString(value, 'salt');
+  if (!data || !iv || !salt) throw new Error('Invalid encrypted vault');
+
+  if (version === undefined) return { data, iv, salt };
+  if (!isRecord(value.kdf)) throw new Error('Invalid encrypted vault KDF');
+  if (value.kdf.name !== 'PBKDF2' || value.kdf.hash !== 'SHA-256') {
+    throw new Error('Unsupported encrypted vault KDF');
+  }
+  const iterations = value.kdf.iterations;
+  if (typeof iterations !== 'number' || !Number.isInteger(iterations)) {
+    throw new Error('Invalid encrypted vault KDF');
+  }
+  return {
+    version,
+    data,
+    iv,
+    salt,
+    kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations },
+  };
+}
+
+export async function decryptApiKeysPayload(value: unknown, password: string): Promise<ApiKeys> {
+  const encryptedData = parseEncryptedKeyData(value);
+  const decryptedData = await CryptoUtils.decrypt(encryptedData, password);
+  return parseApiKeys(JSON.parse(decryptedData));
 }
 
 // IndexedDB utilities for encrypted persistent storage
@@ -302,13 +448,35 @@ export async function hasPersistedKeys(profileId: string = 'default'): Promise<b
   return IndexedDBStorage.hasEncryptedKeys(profileId);
 }
 
-function hasValidCustomBaseUrl(value: string | undefined): boolean {
+export function hasValidCustomBaseUrl(value: string | undefined): boolean {
   if (!value?.trim()) return false;
   try {
     const url = new URL(value.trim());
     return url.protocol === 'https:' && Boolean(url.hostname);
   } catch {
     return false;
+  }
+}
+
+export function isValidProviderApiKey(key: string | undefined, type: ProviderId): boolean {
+  if (!key || !key.trim()) return false;
+  const trimmedKey = key.trim();
+  switch (type) {
+    case 'openai':
+      return trimmedKey.startsWith('sk-') && trimmedKey.length > 20;
+    case 'google':
+      return trimmedKey.startsWith('AIza') && trimmedKey.length > 20;
+    case 'anthropic':
+      return trimmedKey.startsWith('sk-ant-') && trimmedKey.length > 20;
+    case 'opencode-go':
+    case 'opencode-zen':
+      return trimmedKey.length > 5 && !/\s/.test(trimmedKey);
+    case 'meta':
+      return trimmedKey.length > 20 && !/\s/.test(trimmedKey);
+    case 'custom':
+      return trimmedKey.length > 5;
+    default:
+      return false;
   }
 }
 
@@ -324,29 +492,10 @@ export function useSecureApiKeys(profileId: string = 'default') {
   const [isLoading, setIsLoading] = useState(false);
 
   // Validate API key format
-  const validateApiKey = useCallback((key: string | undefined, type: ProviderId): boolean => {
-    if (!key || !key.trim()) return false;
-    const trimmedKey = key.trim();
-    
-    switch (type) {
-      case 'openai':
-        return trimmedKey.startsWith('sk-') && trimmedKey.length > 20;
-      case 'google':
-        return trimmedKey.startsWith('AIza') && trimmedKey.length > 20;
-      case 'anthropic':
-        return trimmedKey.startsWith('sk-ant-') && trimmedKey.length > 20;
-      case 'opencode-go':
-      case 'opencode-zen':
-        return trimmedKey.length > 5 && !/\s/.test(trimmedKey);
-      case 'meta':
-        // OpenRouter sk-or-v1-… and other sk- relay keys
-        return (trimmedKey.startsWith('sk-') || trimmedKey.startsWith('sk-or-')) && trimmedKey.length > 20;
-      case 'custom':
-        return trimmedKey.length > 5; // More lenient for custom APIs
-      default:
-        return false;
-    }
-  }, []);
+  const validateApiKey = useCallback(
+    (key: string | undefined, type: ProviderId) => isValidProviderApiKey(key, type),
+    []
+  );
 
   // Get API key status
   const getApiKeyStatus = useCallback((): ApiKeyStatus => {
@@ -354,14 +503,16 @@ export function useSecureApiKeys(profileId: string = 'default') {
     
     // For Google: check direct key OR OpenRouter key (if configured for OpenRouter)
     const googleProvider = apiKeys?.googleProvider || 'google';
-    const googleValid = validateApiKey(apiKeys?.googleKey, 'google') || 
-      (googleProvider === 'openrouter' && validateApiKey(apiKeys?.metaRelayKey, 'meta'));
+    const googleValid = googleProvider === 'openrouter'
+      ? validateApiKey(apiKeys?.metaRelayKey, 'meta')
+      : validateApiKey(apiKeys?.googleKey, 'google');
     
     // For Anthropic: check direct key OR OpenRouter key (if configured for OpenRouter)
     // Default to 'anthropic' if claudeProvider is undefined
     const claudeProvider = apiKeys?.claudeProvider || 'anthropic';
-    const anthropicValid = validateApiKey(apiKeys?.anthropicKey, 'anthropic') || 
-      (claudeProvider === 'openrouter' && validateApiKey(apiKeys?.metaRelayKey, 'meta'));
+    const anthropicValid = claudeProvider === 'openrouter'
+      ? validateApiKey(apiKeys?.metaRelayKey, 'meta')
+      : validateApiKey(apiKeys?.anthropicKey, 'anthropic');
 
     const opencodeValid = validateApiKey(apiKeys?.opencodeKey, 'opencode-go');
     
@@ -450,13 +601,11 @@ export function useSecureApiKeys(profileId: string = 'default') {
     setIsLoading(true);
     
     try {
+      if (file.size > 1024 * 1024) throw new Error('Encrypted key file exceeds 1 MB');
       const text = await file.text();
-      const encryptedData: EncryptedKeyData = JSON.parse(text);
-      const decryptedData = await CryptoUtils.decrypt(encryptedData, password);
-      const importedKeys: ApiKeys = JSON.parse(decryptedData);
-      
+      const importedKeys = await decryptApiKeysPayload(JSON.parse(text), password);
       setApiKeys(importedKeys);
-    } catch (error) {
+    } catch {
       throw new Error('Failed to decrypt file. Please check your password.');
     } finally {
       setIsLoading(false);
@@ -479,16 +628,18 @@ export function useSecureApiKeys(profileId: string = 'default') {
     setIsLoading(true);
     
     try {
-      const encryptedData = await IndexedDBStorage.loadEncryptedKeys(profileId);
-      if (!encryptedData) {
+      const storedData = await IndexedDBStorage.loadEncryptedKeys(profileId);
+      if (!storedData) {
         throw new Error('No saved keys found for this profile');
       }
-      
-      const decryptedData = await CryptoUtils.decrypt(encryptedData, password);
-      const loadedKeys: ApiKeys = JSON.parse(decryptedData);
-      
+      const encryptedData = parseEncryptedKeyData(storedData);
+      const loadedKeys = await decryptApiKeysPayload(encryptedData, password);
+      if (encryptedData.version !== CURRENT_VAULT_VERSION && isStrongVaultPassword(password)) {
+        const upgraded = await CryptoUtils.encrypt(JSON.stringify(ensureApiKeysStructure(loadedKeys)), password);
+        await IndexedDBStorage.saveEncryptedKeys(profileId, upgraded);
+      }
       setApiKeys(loadedKeys);
-    } catch (error) {
+    } catch {
       throw new Error('Failed to decrypt saved keys. Please check your password.');
     } finally {
       setIsLoading(false);
@@ -516,12 +667,7 @@ export function useSecureApiKeys(profileId: string = 'default') {
       apiKeys.customApiKey,
     ].map((key) => key.trim()).filter(Boolean);
 
-    return configuredKeys.reduce(
-      (redacted, key) => redacted.split(key).join('[REDACTED]'),
-      message
-    )
-      .replace(/sk-(?:proj-|svcacct-|admin-|ant-api\d{2}-|or-v\d+-)?[a-zA-Z0-9\-_]{20,}/g, 'sk-***REDACTED***')
-      .replace(/AIza[a-zA-Z0-9\-_]{20,}/g, 'AIza***REDACTED***');
+    return redactSensitiveText(message, configuredKeys);
   }, [apiKeys]);
 
   return {

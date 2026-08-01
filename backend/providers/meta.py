@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import time
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -12,15 +11,12 @@ from security import (
     log_provider_error,
     normalize_outbound_key_header,
     outbound_client,
-    read_limited_response,
-    validate_outbound_url,
+    validate_relay_base_url,
 )
 from services.search.normalize import from_openrouter_annotations, merge_metadata
 
-from .base import BaseProvider
+from .base import BaseProvider, MAX_PROVIDER_OUTPUT_CHARS
 from .stream_events import ProviderStreamEvent
-
-logger = logging.getLogger(__name__)
 
 OPENROUTER_APP_URL = os.getenv("APP_URL", "https://aicompare-nexus.vercel.app")
 OPENROUTER_APP_TITLE = "ModelWise"
@@ -32,11 +28,13 @@ class MetaRelayProvider(BaseProvider):
     def __init__(self, key: str, model: str, base_url: str, key_header: str = "Authorization"):
         self.key = key
         self.model = model
-        self.base_url = validate_outbound_url(base_url)
+        self.base_url = validate_relay_base_url(base_url)
         self.key_header = normalize_outbound_key_header(key_header)
 
     def _headers(self) -> dict:
-        value = self.key if self.key.startswith("Bearer ") else f"Bearer {self.key}"
+        value = self.key
+        if self.key_header == "Authorization" and not value.startswith("Bearer "):
+            value = f"Bearer {value}"
         headers = {self.key_header: value, "Content-Type": "application/json"}
         if "openrouter" in self.base_url.lower():
             headers["HTTP-Referer"] = OPENROUTER_APP_URL
@@ -48,7 +46,7 @@ class MetaRelayProvider(BaseProvider):
             url = f"{self.base_url}/chat/completions"
         else:
             url = f"{self.base_url}/v1/chat/completions"
-        return validate_outbound_url(url)
+        return url
 
     def _payload(
         self,
@@ -93,27 +91,34 @@ class MetaRelayProvider(BaseProvider):
                 if isinstance(p, dict):
                     bucket.append(p)
 
-    def _extract_queries_from_chunk(self, chunk: dict) -> List[str]:
+    def _extract_queries_from_chunk(self, chunk: dict, buffers: Dict[str, str]) -> List[str]:
         queries: List[str] = []
         choice = chunk.get("choices", [{}])[0]
-        for tc in choice.get("delta", {}).get("tool_calls") or []:
+        for position, tc in enumerate(choice.get("delta", {}).get("tool_calls") or []):
             fn = tc.get("function") or {}
             args = fn.get("arguments") or ""
             if not args:
                 continue
+            key = str(tc.get("id") or tc.get("index", position))
+            buffers[key] = buffers.get(key, "") + args
             try:
-                parsed = json.loads(args)
+                parsed = json.loads(buffers[key])
                 q = parsed.get("query") or parsed.get("q")
                 if q:
                     queries.append(str(q))
+                buffers.pop(key, None)
             except json.JSONDecodeError:
                 pass
         return queries
 
     async def complete(self, prompt: str, search: Optional[ResolvedSearchOptions] = None) -> str:
         parts: List[str] = []
+        length = 0
         async for event in self.stream_events(prompt, search):
             if event.kind == "token":
+                length += len(event.text)
+                if length > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
                 parts.append(event.text)
         return "".join(parts)
 
@@ -124,9 +129,12 @@ class MetaRelayProvider(BaseProvider):
     ) -> AsyncIterator[ProviderStreamEvent]:
         annotations: List[dict] = []
         metadata = None
-        search_started = time.time()
+        search_started = time.monotonic()
         is_openrouter = "openrouter" in self.base_url.lower()
         queries_seen: set[str] = set()
+        tool_buffers: Dict[str, str] = {}
+        emitted_text = False
+        terminal = False
 
         try:
             async with outbound_client(180) as client:
@@ -137,11 +145,9 @@ class MetaRelayProvider(BaseProvider):
                     json=self._payload(prompt, stream=True, search=search),
                 ) as response:
                     if response.status_code >= 400:
-                        body = await read_limited_response(response)
                         log_provider_error(
                             f"Relay upstream error {response.status_code}",
                             Exception("upstream returned an error"),
-                            body,
                         )
                     response.raise_for_status()
 
@@ -150,14 +156,19 @@ class MetaRelayProvider(BaseProvider):
                             continue
                         raw = line[5:].strip()
                         if raw == "[DONE]":
+                            terminal = True
                             break
                         try:
                             chunk = json.loads(raw)
                         except json.JSONDecodeError:
                             continue
 
+                        if not isinstance(chunk, dict):
+                            continue
+                        if chunk.get("error") is not None:
+                            raise Exception("Relay stream failed")
                         self._collect_annotations(chunk, annotations)
-                        for q in self._extract_queries_from_chunk(chunk):
+                        for q in self._extract_queries_from_chunk(chunk, tool_buffers):
                             if q not in queries_seen:
                                 queries_seen.add(q)
                                 yield ProviderStreamEvent(
@@ -166,13 +177,25 @@ class MetaRelayProvider(BaseProvider):
                                 )
 
                         choice = chunk.get("choices", [{}])[0]
+                        if not isinstance(choice, dict):
+                            continue
+                        finish_reason = str(choice.get("finish_reason") or "").lower()
+                        if finish_reason == "length":
+                            raise Exception("Relay output limit reached before completion")
+                        if finish_reason == "content_filter":
+                            raise Exception("Relay response was blocked by content filtering")
+                        if finish_reason:
+                            if finish_reason != "stop":
+                                raise Exception("Relay response did not complete successfully")
+                            terminal = True
                         delta = choice.get("delta") or {}
                         content = delta.get("content")
                         if content:
+                            emitted_text = True
                             yield ProviderStreamEvent(kind="token", text=content)
 
             if search and search.should_use_search and is_openrouter:
-                latency = int((time.time() - search_started) * 1000)
+                latency = int((time.monotonic() - search_started) * 1000)
                 if annotations:
                     meta = from_openrouter_annotations(annotations, list(queries_seen), "openrouter")
                     meta.search_latency_ms = latency
@@ -193,6 +216,10 @@ class MetaRelayProvider(BaseProvider):
                     kind="search_complete",
                     data={"metadata": final_meta.to_dict()},
                 )
+            if not emitted_text:
+                raise Exception("Relay returned no answer text")
+            if not terminal:
+                raise Exception("Relay stream terminated unexpectedly")
         except httpx.HTTPStatusError as e:
             code = e.response.status_code
             if code == 401:
@@ -204,4 +231,4 @@ class MetaRelayProvider(BaseProvider):
             raise Exception("Relay API request timed out")
         except Exception as e:
             log_provider_error("Meta relay error", e)
-            raise Exception("Relay request failed") from None
+            raise e from None

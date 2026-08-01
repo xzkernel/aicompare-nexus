@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "expires": "2026-10-01",
+  "allowedAdvisories": [
+    {
+      "id": "GHSA-qwww-vcr4-c8h2",
+      "severity": "high",
+      "package": "react-router",
+      "url": "https://github.com/advisories/GHSA-qwww-vcr4-c8h2",
+      "rationale": "Temporary exception while no fixed stable React 18-compatible release is published. This frontend is a client-only BrowserRouter SPA and does not enable React Server Components, server actions, or React Router RSC mode.",
+      "requiredArchitecture": "non-RSC BrowserRouter SPA"
+    }
+  ]
+}

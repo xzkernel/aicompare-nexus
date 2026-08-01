@@ -9,14 +9,14 @@ Same BYOK headers and JSON body as `/api/v1/ask`:
 ```json
 {
   "prompt": "...",
-  "leftModel": "gpt-4o",
-  "rightModel": "gemini-2.5-flash",
+  "leftModel": "gpt-5.5",
+  "rightModel": "gemini-3.5-flash",
   "leftProvider": "openai",
   "rightProvider": "google"
 }
 ```
 
-Headers (optional, BYOK): `X-OpenAI-API-Key`, `X-Google-API-Key`, `X-Anthropic-API-Key`, `X-Meta-API-Key`, relay base URL headers.
+Headers (optional, BYOK): `X-OpenAI-API-Key`, `X-Google-API-Key`, `X-Anthropic-API-Key`, `X-OpenCode-API-Key`, `X-Meta-API-Key`, `X-Custom-API-Key`, and the relay/custom endpoint headers documented in [PROVIDERS.md](./PROVIDERS.md).
 
 ## SSE events
 
@@ -27,6 +27,8 @@ Headers (optional, BYOK): `X-OpenAI-API-Key`, `X-Google-API-Key`, `X-Anthropic-A
 | `done` | `{ side, elapsed, text? }` |
 | `error` | `{ side, message, elapsed? }` |
 | `complete` | `{ prompt, leftModel, rightModel }` |
+
+When `searchMode` is `auto` or `force`, supported routes can also emit `search_start`, `search_sources`, `grounding`, `citations`, and `search_complete`. The `start` payload includes route-level search capability, and `done` can include normalized `searchMetadata`. See [WEB_SEARCH.md](./WEB_SEARCH.md).
 
 ## Frontend flow
 
@@ -52,7 +54,7 @@ Headers (optional, BYOK): `X-OpenAI-API-Key`, `X-Google-API-Key`, `X-Anthropic-A
 
 ## Provider support
 
-Streaming is implemented for OpenAI, Anthropic, Gemini, and OpenAI-compatible relays (Meta/custom).
+Streaming is implemented for OpenAI, Anthropic, Gemini, OpenCode Go and Zen, OpenRouter-compatible relays, and custom OpenAI-compatible endpoints. Provider-native web search is a separate, narrower capability documented in [WEB_SEARCH.md](./WEB_SEARCH.md).
 
 ## Limitations
 

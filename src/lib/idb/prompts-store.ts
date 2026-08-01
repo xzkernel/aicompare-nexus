@@ -23,7 +23,7 @@ export async function listPromptRecords(includeDeleted = false): Promise<SavedPr
 
 export async function putPromptRecord(
   input: SavedPromptInput & { id?: string },
-  options?: { skipSync?: boolean }
+  _options?: { skipSync?: boolean }
 ): Promise<SavedPromptRecord> {
   const db = await getLocalDb();
   const now = Date.now();
@@ -43,18 +43,15 @@ export async function putPromptRecord(
 
 export async function upsertPromptRecordLocal(
   record: SavedPromptRecord,
-  options?: { skipSync?: boolean }
+  _options?: { skipSync?: boolean }
 ): Promise<void> {
   const db = await getLocalDb();
   await db.put("saved_prompts", record);
   notifyLocalDbChange();
 }
 
-export async function softDeletePromptRecord(id: string): Promise<void> {
+export async function deletePromptRecord(id: string): Promise<void> {
   const db = await getLocalDb();
-  const row = await db.get("saved_prompts", id);
-  if (!row) return;
-  const now = Date.now();
-  await db.put("saved_prompts", { ...row, deletedAt: now, updatedAt: now });
+  await db.delete("saved_prompts", id);
   notifyLocalDbChange();
 }

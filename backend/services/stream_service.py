@@ -11,6 +11,7 @@ from typing import AsyncIterator, Optional
 
 
 from providers.factory import provider_for
+from providers.base import MAX_PROVIDER_OUTPUT_CHARS
 
 from providers.stream_events import ProviderStreamEvent
 
@@ -23,6 +24,7 @@ from schemas.search import (
 from schemas.stream import StreamRequest
 
 from services.search.normalize import NormalizedSearchMetadata, merge_metadata, provider_supports_search
+from services.search.citations import valid_citation_url
 
 from utils.byok import ByokHeaders
 
@@ -32,6 +34,9 @@ from security import classify_provider_error, redact_sensitive_data
 
 
 logger = logging.getLogger(__name__)
+
+STREAM_DEADLINE_SECONDS = 180.0
+SSE_HEARTBEAT_SECONDS = 15.0
 
 
 
@@ -94,6 +99,8 @@ def _emit_search_event(
 
 
 
+                if not isinstance(c, dict) or not valid_citation_url(c.get("url")):
+                    continue
                 meta.citations.append(
 
                     NormalizedCitation(
@@ -112,11 +119,11 @@ def _emit_search_event(
 
                 )
 
-            metadata = merge_metadata(metadata, meta)
-            if event.kind in ("search_sources", "citations"):
+            if event.kind == "citations":
                 meta.used = bool(meta.search_queries or meta.citations)
                 meta.live_search = meta.used
-            payload["metadata"] = meta.to_dict()
+            metadata = merge_metadata(metadata, meta)
+            payload["metadata"] = metadata.to_dict()
 
     return _sse(event.kind, payload), metadata
 
@@ -142,42 +149,25 @@ async def _stream_side(
 
     queue: asyncio.Queue,
 
-) -> None:
+    emit_terminal: bool = True,
 
-    start = time.time()
+) -> str:
+
+    start = time.monotonic()
 
     search_start: Optional[float] = None
 
     full_parts: list[str] = []
+    output_chars = 0
 
     metadata: Optional[NormalizedSearchMetadata] = None
     search_complete_sent = False
+    unsupported_reason: Optional[str] = None
 
     effective_search = search
 
     if search.should_use_search and not provider_supports_search(provider_name):
-
-        await queue.put(
-
-            _sse(
-
-                "search_complete",
-
-                {
-
-                    "side": side,
-
-                    "skipped": True,
-
-                    "reason": f"{provider_name} does not support live web search in ModelWise",
-
-                },
-
-            )
-
-        )
-
-        search_complete_sent = True
+        unsupported_reason = f"{provider_name} does not support live web search in ModelWise"
         effective_search = ResolvedSearchOptions(active=False, force=False, mode=search.mode)
 
 
@@ -228,6 +218,15 @@ async def _stream_side(
 
         )
 
+        if unsupported_reason:
+            await queue.put(
+                _sse(
+                    "search_complete",
+                    {"side": side, "skipped": True, "reason": unsupported_reason},
+                )
+            )
+            search_complete_sent = True
+
 
 
         if effective_search.should_use_search:
@@ -252,14 +251,16 @@ async def _stream_side(
 
             )
 
-            search_start = time.time()
+            search_start = time.monotonic()
 
 
 
         async for event in provider.stream_events(prompt, effective_search):
 
             if event.kind == "token" and event.text:
-
+                if output_chars + len(event.text) > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
+                output_chars += len(event.text)
                 full_parts.append(event.text)
 
                 await queue.put(_sse("token", {"side": side, "delta": event.text}))
@@ -292,7 +293,7 @@ async def _stream_side(
 
             if search_start is not None:
 
-                latency_ms = int((time.time() - search_start) * 1000)
+                latency_ms = int((time.monotonic() - search_start) * 1000)
 
             if metadata is None:
 
@@ -344,7 +345,7 @@ async def _stream_side(
 
 
 
-        elapsed = round(time.time() - start, 3)
+        elapsed = round(time.monotonic() - start, 3)
 
         done_payload: dict = {
 
@@ -360,7 +361,10 @@ async def _stream_side(
 
             done_payload["searchMetadata"] = metadata.to_dict()
 
-        await queue.put(_sse("done", done_payload))
+        terminal_event = _sse("done", done_payload)
+        if emit_terminal:
+            await queue.put(terminal_event)
+        return terminal_event
 
     except Exception as e:
 
@@ -368,17 +372,13 @@ async def _stream_side(
 
         client_msg = classify_provider_error(e)
 
-        await queue.put(
-
-            _sse(
-
-                "error",
-
-                {"side": side, "message": client_msg, "elapsed": round(time.time() - start, 3)},
-
-            )
-
+        terminal_event = _sse(
+            "error",
+            {"side": side, "message": client_msg, "elapsed": round(time.monotonic() - start, 3)},
         )
+        if emit_terminal:
+            await queue.put(terminal_event)
+        return terminal_event
 
 
 
@@ -410,90 +410,98 @@ async def stream_comparison_sse(body: StreamRequest, keys: ByokHeaders) -> Async
 
 
 
-    # Backpressure prevents a fast provider from buffering unbounded SSE output
-    # while a client connection is slow or abandoned.
-    queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=256)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + STREAM_DEADLINE_SECONDS
 
-
-
-    async def producer() -> None:
-
-        await asyncio.gather(
-
+    # Separate bounded queues prevent one side from consuming all capacity.
+    queues = {
+        "left": asyncio.Queue(maxsize=128),
+        "right": asyncio.Queue(maxsize=128),
+    }
+    tasks = {
+        "left": asyncio.create_task(
             _stream_side(
-
-                "left",
-
-                body.prompt,
-
-                left_name,
-
-                left_key,
-
-                left_model,
-
-                left_extras,
-
-                search,
-
-                queue,
-
-            ),
-
+                "left", body.prompt, left_name, left_key, left_model, left_extras,
+                search, queues["left"], emit_terminal=False,
+            )
+        ),
+        "right": asyncio.create_task(
             _stream_side(
-
-                "right",
-
-                body.prompt,
-
-                right_name,
-
-                right_key,
-
-                right_model,
-
-                right_extras,
-
-                search,
-
-                queue,
-
-            ),
-
-        )
-
-        await queue.put(None)
-
-
-
-    task = asyncio.create_task(producer())
-
+                "right", body.prompt, right_name, right_key, right_model, right_extras,
+                search, queues["right"], emit_terminal=False,
+            )
+        ),
+    }
+    queue_gets: dict[str, asyncio.Task] = {}
+    terminal_emitted: set[str] = set()
+    next_heartbeat = loop.time() + SSE_HEARTBEAT_SECONDS
     try:
-        while True:
-            item = await queue.get()
-            if item is None:
+        while len(terminal_emitted) < len(tasks):
+            # A side's terminal event follows every queued event from that side.
+            emitted_terminal = False
+            for side, task in tasks.items():
+                if side in terminal_emitted or not task.done() or not queues[side].empty():
+                    continue
+                pending_get = queue_gets.pop(side, None)
+                if pending_get is not None:
+                    pending_get.cancel()
+                    await asyncio.gather(pending_get, return_exceptions=True)
+                terminal_emitted.add(side)
+                yield task.result()
+                emitted_terminal = True
                 break
-            yield item
-    except asyncio.CancelledError:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-        yield _sse("error", {"detail": "Stream cancelled"})
-        return
-    finally:
-        if not task.done():
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        else:
-            try:
-                await task
-            except Exception:
-                pass
+            if emitted_terminal:
+                continue
+
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                for task in tasks.values():
+                    if not task.done():
+                        task.cancel()
+                for get_task in queue_gets.values():
+                    get_task.cancel()
+                await asyncio.gather(*tasks.values(), *queue_gets.values(), return_exceptions=True)
+
+                for side, task in tasks.items():
+                    if side in terminal_emitted:
+                        continue
+                    terminal_emitted.add(side)
+                    if task.done() and not task.cancelled():
+                        yield task.result()
+                    else:
+                        yield _sse(
+                            "error",
+                            {"side": side, "message": "Provider request timed out."},
+                        )
+                break
+
+            for side, task in tasks.items():
+                if side not in terminal_emitted and side not in queue_gets:
+                    queue_gets[side] = asyncio.create_task(queues[side].get())
+
+            waitables = list(queue_gets.values()) + [task for task in tasks.values() if not task.done()]
+            done, _ = await asyncio.wait(
+                waitables,
+                timeout=min(max(0.0, next_heartbeat - loop.time()), remaining),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            delivered = False
+            for side, get_task in list(queue_gets.items()):
+                if get_task not in done:
+                    continue
+                del queue_gets[side]
+                yield get_task.result()
+                delivered = True
+                break
+            if delivered or done:
+                continue
+
+            if loop.time() < next_heartbeat:
+                await asyncio.sleep(next_heartbeat - loop.time())
+            if loop.time() < deadline:
+                yield ": heartbeat\n\n"
+                next_heartbeat = loop.time() + SSE_HEARTBEAT_SECONDS
 
         yield _sse(
             "complete",
@@ -504,5 +512,10 @@ async def stream_comparison_sse(body: StreamRequest, keys: ByokHeaders) -> Async
                 "searchMode": body.searchMode.value if body.searchMode else None,
             },
         )
+    finally:
+        for task in (*tasks.values(), *queue_gets.values()):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks.values(), *queue_gets.values(), return_exceptions=True)
 
 

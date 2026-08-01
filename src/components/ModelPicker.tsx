@@ -7,10 +7,12 @@ import {
   filterOptionsBySearch,
   getModelCapabilities,
   groupOptionsByProvider,
+  parseModelValue,
 } from "@/lib/model-registry";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { useSecureApiKeys } from "@/lib/secure-api-keys";
 import type { RegistryFilters } from "@/types/registry";
+import type { ProviderId } from "@/config/providers";
 import { cn } from "@/lib/utils";
 
 interface ModelPickerProps {
@@ -57,7 +59,7 @@ export function ModelPicker({
     [localFilters, externalFilters]
   );
 
-  const { options, loading, registry, error, reload } = useModelRegistry(profileId, filters);
+  const { options, loading, registry, reload } = useModelRegistry(profileId, filters);
 
   const searchedOptions = useMemo(
     () => filterOptionsBySearch(options, search),
@@ -80,7 +82,7 @@ export function ModelPicker({
       ? "Loading models…"
       : value.split(":").slice(1).join(":") || placeholder;
 
-  const hasValidKey = (providerId: string): boolean => !!getApiKey(providerId);
+  const hasValidKey = (providerId: string): boolean => !!getApiKey(providerId as ProviderId);
 
   const staleValue = value && registry && !registry.byFullId.has(value);
   const syncSource = registry?.syncSource;
@@ -357,7 +359,7 @@ export function ModelPicker({
                   {group}
                 </div>
                 {opts.map((opt) => {
-                  const [providerId] = opt.value.split(":");
+                  const { providerId } = parseModelValue(opt.value);
                   const badges = getModelCapabilities(opt.model);
                   return (
                     <ModelOptionButton

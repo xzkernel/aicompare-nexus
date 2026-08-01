@@ -49,9 +49,11 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**conduct@modelwise.ai**. All complaints will be reviewed and investigated
-promptly and fairly.
+reported privately to a maintainer listed in the
+[README](./README.md), using a private contact method published on that
+maintainer's GitHub profile. Do not include sensitive conduct reports in a
+public issue. Community leaders will respect the privacy and security of the
+reporter to the extent reasonably possible.
 
 ## Attribution
 

@@ -10,10 +10,22 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/prism-light";
+import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
+import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
+import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
+import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
+import jsx from "react-syntax-highlighter/dist/esm/languages/prism/jsx";
+import markdown from "react-syntax-highlighter/dist/esm/languages/prism/markdown";
+import markup from "react-syntax-highlighter/dist/esm/languages/prism/markup";
+import python from "react-syntax-highlighter/dist/esm/languages/prism/python";
+import sql from "react-syntax-highlighter/dist/esm/languages/prism/sql";
+import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
+import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
+import oneLight from "react-syntax-highlighter/dist/esm/styles/prism/one-light";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +41,42 @@ const fontSizeClasses = {
   medium: "text-base",
   large: "text-lg",
 };
+
+const LANGUAGES = {
+  bash,
+  css,
+  javascript,
+  json,
+  jsx,
+  markdown,
+  markup,
+  python,
+  sql,
+  tsx,
+  typescript,
+};
+
+Object.entries(LANGUAGES).forEach(([name, language]) => {
+  SyntaxHighlighter.registerLanguage(name, language);
+});
+SyntaxHighlighter.registerLanguage("js", javascript);
+SyntaxHighlighter.registerLanguage("ts", typescript);
+SyntaxHighlighter.registerLanguage("html", markup);
+SyntaxHighlighter.registerLanguage("xml", markup);
+SyntaxHighlighter.registerLanguage("sh", bash);
+SyntaxHighlighter.registerLanguage("shell", bash);
+SyntaxHighlighter.registerLanguage("py", python);
+
+const SUPPORTED_LANGUAGES = new Set([
+  ...Object.keys(LANGUAGES),
+  "js",
+  "ts",
+  "html",
+  "xml",
+  "sh",
+  "shell",
+  "py",
+]);
 
 /**
  * Strict rehype-sanitize schema — extends the safe default.
@@ -56,6 +104,7 @@ const sanitizeSchema = {
 };
 
 export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) => {
+  const { t } = useTranslation();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -64,9 +113,9 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
       await navigator.clipboard.writeText(code);
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
-      toast({ title: "Code copied" });
+      toast({ title: t("markdown.codeCopied") });
     } catch {
-      toast({ title: "Copy failed", variant: "destructive" });
+      toast({ title: t("markdown.copyFailed"), variant: "destructive" });
     }
   };
 
@@ -96,6 +145,10 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
             );
           },
 
+          img({ alt }) {
+            return <span className="text-text-muted">[{t("markdown.remoteImageBlocked")}{alt ? `: ${alt}` : ""}]</span>;
+          },
+
           // ── Code blocks ────────────────────────────────────────────────────
           code({ className, children, ...props }: React.HTMLAttributes<HTMLElement> & { node?: unknown }) {
             const match = /language-(\w+)/.exec(className ?? "");
@@ -103,15 +156,16 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
             const codeString = String(children).replace(/\n$/, "");
             const isInline = !className?.includes("language-");
 
-            if (!isInline && language) {
+            if (!isInline && language && SUPPORTED_LANGUAGES.has(language)) {
               return (
                 <div className="relative group">
-                  <div className="absolute right-2 top-2 z-10">
+                  <div className="absolute end-2 top-2 z-10">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => void handleCopyCode(codeString)}
-                      className="h-8 w-8 p-0 bg-black/50 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={t("markdown.copyCode")}
+                      className="h-8 w-8 bg-black/50 p-0 opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 focus-visible:opacity-100"
                     >
                       {copiedCode === codeString ? (
                         <Check className="w-4 h-4 text-green-400" />
@@ -121,7 +175,7 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
                     </Button>
                   </div>
                   <SyntaxHighlighter
-                    style={oneDark as Record<string, React.CSSProperties>}
+                    style={oneLight as Record<string, React.CSSProperties>}
                     language={language}
                     PreTag="div"
                     className="rounded-lg"
@@ -129,6 +183,14 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
                     {codeString}
                   </SyntaxHighlighter>
                 </div>
+              );
+            }
+
+            if (!isInline) {
+              return (
+                <pre className="overflow-x-auto rounded-lg border border-stroke-subtle bg-white p-3 text-sm text-black">
+                  <code {...props}>{codeString}</code>
+                </pre>
               );
             }
 
@@ -158,9 +220,9 @@ export const MarkdownRenderer = ({ content, fontSize }: MarkdownRendererProps) =
           ol: ({ children }) => (
             <ol className="mb-4 space-y-1 text-foreground/90">{children}</ol>
           ),
-          li: ({ children }) => <li className="ml-4">{children}</li>,
+          li: ({ children }) => <li className="ms-4">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary/40 pl-4 italic mb-4 text-foreground/80">
+            <blockquote className="mb-4 border-s-4 border-primary/40 ps-4 italic text-foreground/80">
               {children}
             </blockquote>
           ),

@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Download, Upload, FileText, Database, AlertCircle } from "lucide-react";
+import { Download, FileText, Database, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useComparisonSessions } from "@/hooks/use-comparison-sessions";
 import {
@@ -12,6 +13,12 @@ import {
   listComparisonSessions,
   type ComparisonSession,
 } from "@/lib/session-store";
+import {
+  encodeCsvCell,
+  MAX_IMPORT_FILE_BYTES,
+  parseSessionImport,
+} from "@/lib/session-import";
+import { useLocale } from "@/contexts/LocaleProvider";
 
 interface DatasetExport {
   id: string;
@@ -21,66 +28,12 @@ interface DatasetExport {
   sessions: ComparisonSession[];
 }
 
-const CSV_SAFE_PREFIX = "'\t";
-
-function encodeCsvCell(value: string | number | boolean | undefined, userControlled = false): string {
-  let text = value == null ? "" : String(value);
-  if (userControlled && (text.startsWith(CSV_SAFE_PREFIX) || /^[\s]*[=+\-@]/.test(text))) {
-    text = CSV_SAFE_PREFIX + text;
-  }
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function decodeCsvCell(value: string): string {
-  return value.startsWith(CSV_SAFE_PREFIX) ? value.slice(CSV_SAFE_PREFIX.length) : value;
-}
-
-function parseCsv(text: string, maxRows: number): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let quoted = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted) {
-      if (char === '"' && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (char === '"') {
-        quoted = false;
-      } else {
-        field += char;
-      }
-    } else if (char === '"' && field.length === 0) {
-      quoted = true;
-    } else if (char === ",") {
-      row.push(field);
-      field = "";
-    } else if (char === "\n" || char === "\r") {
-      if (char === "\r" && text[i + 1] === "\n") i++;
-      row.push(field);
-      if (row.some((cell) => cell.length > 0)) rows.push(row);
-      if (rows.length >= maxRows) return rows;
-      row = [];
-      field = "";
-    } else {
-      field += char;
-    }
-  }
-
-  if (quoted) throw new Error("Unterminated quoted CSV field");
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    if (row.some((cell) => cell.length > 0)) rows.push(row);
-  }
-  return rows;
-}
-
 export function SessionExportImport() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const { locale } = useLocale();
   const { stats, sessions } = useComparisonSessions();
 
   const exportSessions = async (format: "json" | "csv") => {
@@ -100,7 +53,7 @@ export function SessionExportImport() {
     try {
       const dataset: DatasetExport = {
         id: `dataset-${Date.now()}`,
-        name: `ModelWise Sessions - ${new Date().toLocaleDateString()}`,
+        name: `ModelWise Sessions - ${new Date().toLocaleDateString(locale)}`,
         description: "Exported comparison sessions from ModelWise",
         timestamp: Date.now(),
         sessions,
@@ -181,110 +134,32 @@ export function SessionExportImport() {
     setIsImporting(true);
 
     try {
-      // Size guard — reject files over 10 MB before parsing
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error("Import file is too large (max 10 MB)");
+      if (file.size > MAX_IMPORT_FILE_BYTES) {
+        throw new Error("file-too-large");
       }
 
       const text = await file.text();
-      let imported: ComparisonSession[] = [];
+      const imported = parseSessionImport(text, file.name);
+      if (!imported.length) throw new Error("no-valid-sessions");
 
-      if (file.name.endsWith(".json")) {
-        const parsed = JSON.parse(text) as DatasetExport | { sessions: ComparisonSession[] };
-        const rawSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
-        // Structural validation — only accept recognised fields, coerce types
-        imported = rawSessions
-          .filter((s): s is Record<string, unknown> => s !== null && typeof s === "object")
-          .map((s) => ({
-            id: typeof s.id === "string" && s.id.length < 128 ? s.id : crypto.randomUUID(),
-            timestamp: typeof s.timestamp === "number" && Number.isFinite(s.timestamp) ? s.timestamp : Date.now(),
-            prompt: typeof s.prompt === "string" ? s.prompt.slice(0, 32_000) : "",
-            leftModel: typeof s.leftModel === "string" ? s.leftModel.slice(0, 128) : "",
-            rightModel: typeof s.rightModel === "string" ? s.rightModel.slice(0, 128) : "",
-            leftResponse: typeof s.leftResponse === "string" ? s.leftResponse : undefined,
-            rightResponse: typeof s.rightResponse === "string" ? s.rightResponse : undefined,
-            leftTimeMs: typeof s.leftTimeMs === "number" ? s.leftTimeMs : undefined,
-            rightTimeMs: typeof s.rightTimeMs === "number" ? s.rightTimeMs : undefined,
-            leftTokens: typeof s.leftTokens === "number" ? s.leftTokens : undefined,
-            rightTokens: typeof s.rightTokens === "number" ? s.rightTokens : undefined,
-            pinned: s.pinned === true,
-            verdict:
-              s.verdict === "left" || s.verdict === "tie" || s.verdict === "right"
-                ? s.verdict
-                : undefined,
-          }))
-          .filter((s) => s.prompt.length > 0 && s.leftModel.length > 0);
-      } else if (file.name.endsWith(".csv")) {
-        const rows = parseCsv(text, 10_001);
-        const headers = rows[0] ?? [];
-        const column = (name: string, fallback: number) => {
-          const index = headers.indexOf(name);
-          return index >= 0 ? index : fallback;
-        };
-        const indexes = {
-          id: column("Session ID", 0),
-          timestamp: column("Timestamp", 1),
-          prompt: column("Prompt", 2),
-          leftModel: column("Left Model", 3),
-          rightModel: column("Right Model", 4),
-          leftResponse: column("Left Response", 5),
-          rightResponse: column("Right Response", 6),
-          leftTime: column("Left Time (ms)", 7),
-          rightTime: column("Right Time (ms)", 8),
-          leftTokens: headers.indexOf("Left Tokens"),
-          rightTokens: headers.indexOf("Right Tokens"),
-          pinned: column("Pinned", 9),
-          verdict: headers.indexOf("Verdict"),
-        };
-        const get = (values: string[], index: number) =>
-          index >= 0 ? decodeCsvCell(values[index] ?? "") : "";
-        const optionalNumber = (value: string) => {
-          if (!value) return undefined;
-          const parsed = Number(value);
-          return Number.isFinite(parsed) ? parsed : undefined;
-        };
-
-        for (let i = 1; i < rows.length; i++) {
-          const values = rows[i];
-          const prompt = get(values, indexes.prompt).slice(0, 32_000);
-          const leftModel = get(values, indexes.leftModel).slice(0, 128);
-          if (!prompt || !leftModel) continue;
-          const ts = new Date(get(values, indexes.timestamp)).getTime();
-          const id = get(values, indexes.id);
-          const verdict = get(values, indexes.verdict);
-          imported.push({
-            id: id.length < 128 ? (id || crypto.randomUUID()) : crypto.randomUUID(),
-            timestamp: Number.isFinite(ts) ? ts : Date.now(),
-            prompt,
-            leftModel,
-            rightModel: get(values, indexes.rightModel).slice(0, 128),
-            leftResponse: get(values, indexes.leftResponse) || undefined,
-            rightResponse: get(values, indexes.rightResponse) || undefined,
-            leftTimeMs: optionalNumber(get(values, indexes.leftTime)),
-            rightTimeMs: optionalNumber(get(values, indexes.rightTime)),
-            leftTokens: optionalNumber(get(values, indexes.leftTokens)),
-            rightTokens: optionalNumber(get(values, indexes.rightTokens)),
-            pinned: get(values, indexes.pinned) === "yes",
-            verdict:
-              verdict === "left" || verdict === "tie" || verdict === "right"
-                ? verdict
-                : undefined,
-          });
-        }
-      } else {
-        throw new Error("Unsupported file format");
-      }
-
-      await importComparisonSessions(imported);
+      const result = await importComparisonSessions(imported);
 
       toast({
-        title: "Import Successful",
-        description: `Imported ${imported.length} session(s) into local storage.`,
+        title: t("sessions.importSuccess"),
+        description: t("sessions.importResult", result),
       });
-    } catch {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      const description = reason === "file-too-large"
+        ? t("sessions.fileTooLarge")
+        : reason === "no-valid-sessions"
+          ? t("sessions.noValidSessions")
+          : reason.includes("limited")
+            ? t("sessions.rowLimit", { count: 1_000 })
+            : t("sessions.importFailedDescription");
       toast({
-        title: "Import Failed",
-        description: "Failed to import sessions. Check file format.",
+        title: t("sessions.importFailed"),
+        description,
         variant: "destructive",
       });
     } finally {
@@ -343,7 +218,8 @@ export function SessionExportImport() {
               accept=".json,.csv"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) importSessions(file);
+                 if (file) void importSessions(file);
+                 e.currentTarget.value = "";
               }}
               disabled={isImporting}
             />

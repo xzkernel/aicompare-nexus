@@ -6,7 +6,7 @@ import httpx
 from schemas.search import ResolvedSearchOptions
 from security import iter_limited_response_lines, log_provider_error, outbound_client
 
-from .base import BaseProvider
+from .base import BaseProvider, MAX_PROVIDER_OUTPUT_CHARS
 from .stream_events import ProviderStreamEvent
 
 OPENCODE_ROOTS = {
@@ -217,8 +217,9 @@ class OpenCodeProvider(BaseProvider):
             return Exception("OpenCode service is temporarily unavailable")
         return Exception(default)
 
-    def _raise_for_stream_error(self, event: dict) -> None:
+    def _raise_for_stream_error(self, event: dict) -> bool:
         event_type = str(event.get("type") or "").lower()
+        successful_terminal = False
         if self.protocol == "responses":
             if event_type == "response.failed":
                 raise self._safe_event_error(event, "OpenCode response failed")
@@ -235,6 +236,8 @@ class OpenCodeProvider(BaseProvider):
                 if reason in {"content_filter", "safety"}:
                     raise Exception("OpenCode response was blocked by content filtering")
                 raise Exception("OpenCode response was incomplete")
+            if event_type == "response.completed":
+                successful_terminal = True
 
         elif self.protocol == "messages":
             if event_type == "message_delta":
@@ -244,6 +247,12 @@ class OpenCodeProvider(BaseProvider):
                 stop_reason = str(delta.get("stop_reason") or "").lower()
                 if stop_reason == "max_tokens":
                     raise Exception("OpenCode output limit reached before completion")
+                if stop_reason == "refusal":
+                    raise Exception("OpenCode response was blocked by content filtering")
+                if stop_reason and stop_reason not in {"end_turn", "stop_sequence"}:
+                    raise Exception("OpenCode response did not complete successfully")
+            if event_type == "message_stop":
+                successful_terminal = True
 
         elif self.protocol == "gemini":
             for candidate in event.get("candidates") or []:
@@ -264,6 +273,10 @@ class OpenCodeProvider(BaseProvider):
                     raise Exception("OpenCode response was blocked by safety filtering")
                 if finish_reason in {"RESOURCE_EXHAUSTED", "INSUFFICIENT_RESOURCES"}:
                     raise Exception("OpenCode inference resources were unavailable")
+                if finish_reason == "STOP":
+                    successful_terminal = True
+                elif finish_reason:
+                    raise Exception("OpenCode response did not complete successfully")
             prompt_feedback = event.get("promptFeedback") or {}
             if not isinstance(prompt_feedback, dict):
                 prompt_feedback = {}
@@ -286,10 +299,15 @@ class OpenCodeProvider(BaseProvider):
                     "resource_exhausted",
                 }:
                     raise Exception("OpenCode inference resources were unavailable")
+                if finish_reason == "stop":
+                    successful_terminal = True
+                elif finish_reason:
+                    raise Exception("OpenCode response did not complete successfully")
 
         if event.get("error") is not None or event_type == "error":
             # Inspect only machine-readable categories; never expose upstream details.
             raise self._safe_event_error(event)
+        return successful_terminal
 
     @staticmethod
     def _status_error(status_code: int) -> Exception:
@@ -309,8 +327,12 @@ class OpenCodeProvider(BaseProvider):
 
     async def complete(self, prompt: str, search: Optional[ResolvedSearchOptions] = None) -> str:
         parts: list[str] = []
+        length = 0
         async for event in self.stream_events(prompt, search):
             if event.kind == "token":
+                length += len(event.text)
+                if length > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
                 parts.append(event.text)
         return "".join(parts)
 
@@ -330,6 +352,7 @@ class OpenCodeProvider(BaseProvider):
 
         try:
             emitted_text = False
+            successful_terminal = False
             async with outbound_client(180, transport=self.transport) as client:
                 async with client.stream(
                     "POST",
@@ -345,6 +368,7 @@ class OpenCodeProvider(BaseProvider):
                             continue
                         raw = line[5:].strip()
                         if raw == "[DONE]":
+                            successful_terminal = True
                             break
                         try:
                             upstream_event = json.loads(raw)
@@ -355,9 +379,13 @@ class OpenCodeProvider(BaseProvider):
                         for text in self._text_from_event(upstream_event):
                             emitted_text = True
                             yield ProviderStreamEvent(kind="token", text=text)
-                        self._raise_for_stream_error(upstream_event)
+                        successful_terminal = (
+                            self._raise_for_stream_error(upstream_event) or successful_terminal
+                        )
             if not emitted_text:
                 raise Exception("OpenCode returned no answer text")
+            if not successful_terminal:
+                raise Exception("OpenCode stream terminated unexpectedly")
         except httpx.TimeoutException:
             raise Exception("OpenCode request timed out") from None
         except httpx.RequestError:

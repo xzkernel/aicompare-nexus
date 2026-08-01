@@ -13,15 +13,17 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
+# Environment variables (examples stay versioned)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+**/.env
+**/.env.*
 env.env
-backend/.env
-backend/env.env
+**/env.env
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
 
 # Python
 __pycache__/
@@ -64,11 +66,31 @@ venv.bak/
 *.sln
 *.sw?
 
-# API Keys and Secrets
+# Credentials, private keys, and certificates
 *.key
 *.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+credentials
+credentials.*
+**/credentials
+**/credentials.*
+*-credentials.json
+*.credentials.json
+service-account*.json
+keys/
+certs/
+certificates/
 secrets/
 .secrets/
+!*.example
+!**/*.example
 
 # Database
 *.db
@@ -89,10 +111,4 @@ playwright-report/
 build/
 dist/
 *.tgz
-*.tar.gz
 vite.config.ts.timestamp-*.mjs
-bun.lockb
-
-# Generated / scratch tooling (never commit)
-testsprite_tests/
-newuifrontend/

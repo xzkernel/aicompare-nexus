@@ -21,14 +21,20 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": [
         "warn",
-        { allowConstantExport: true },
+        {
+          allowConstantExport: true,
+          allowExportNames: ["badgeVariants", "useLocale", "useTheme"],
+        },
       ],
       // Existing effects intentionally initialize local state; refactor separately.
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/purity": "off",
       // Sanitized user-facing errors intentionally omit the original cause.
       "preserve-caught-error": "off",
-      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
   }
 );

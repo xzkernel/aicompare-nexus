@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-/**
- * Stitch structure: flex-row, w-1/3 heading + w-2/3 accordion list.
- * Border-top on the 2/3 column, border-bottom per item.
- */
-
 const FAQS = [
   {
     q: "How is ModelWise different from OpenRouter?",
@@ -13,7 +8,7 @@ const FAQS = [
   },
   {
     q: "Is my data secure?",
-    a: "API keys are memory-only by default. Keys and prompts transit the ModelWise backend you configure, which does not intentionally persist keys, before requests reach external providers. An encrypted device vault is optional, and completed comparisons are saved to browser IndexedDB.",
+    a: "API keys are memory-only by default. Keys and prompts transit the ModelWise backend you configure, which does not intentionally persist keys, before requests reach external providers. An encrypted device vault is optional, and completed comparisons are automatically saved to browser IndexedDB.",
   },
   {
     q: "Can I host this on-premise?",
@@ -56,7 +51,9 @@ export function FAQ() {
                 <button
                   type="button"
                   onClick={() => setOpen(isOpen ? null : i)}
-                  className="flex w-full cursor-pointer items-center justify-between text-left"
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${i}`}
+                  className="flex w-full cursor-pointer items-center justify-between text-start"
                 >
                   <h4 className="text-[18px] font-semibold text-white">{item.q}</h4>
                   <span className="ml-8 shrink-0 font-mono text-lg text-white/40 transition-transform duration-200" style={{ transform: isOpen ? "rotate(45deg)" : "rotate(0deg)" }}>
@@ -64,6 +61,8 @@ export function FAQ() {
                   </span>
                 </button>
                 <div
+                  id={`faq-answer-${i}`}
+                  aria-hidden={!isOpen}
                   className={cn(
                     "overflow-hidden transition-[max-height] duration-300",
                     isOpen ? "max-h-48" : "max-h-0"

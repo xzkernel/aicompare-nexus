@@ -17,18 +17,19 @@ Related: [PROVIDERS.md](./PROVIDERS.md) · [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ```json
 {
-  "id": "gpt-4o",
-  "name": "GPT-4o",
+  "id": "gpt-5.5",
+  "name": "GPT-5.5",
   "provider": "openai",
   "supportsStreaming": true,
-  "contextWindow": "128K",
+  "contextWindow": "1M",
   "multimodal": true,
-  "reasoning": false,
+  "reasoning": true,
   "freeTier": false,
   "openSource": false,
   "relaySupported": true,
-  "openRouterId": "openai/gpt-4o",
-  "typicalLatency": "~1.8s",
+  "openRouterId": "openai/gpt-5.5",
+  "typicalLatency": "~2.2s",
+  "supportsWebSearch": false,
   "source": "catalog"
 }
 ```

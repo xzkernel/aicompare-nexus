@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Dict
 
 from .openai import OpenAIProvider
@@ -8,15 +7,6 @@ from .meta import MetaRelayProvider
 from .custom import CustomProvider
 from .base import BaseProvider
 from .opencode import OpenCodeProvider
-
-logger = logging.getLogger(__name__)
-
-# Backward-compatible aliases for legacy imports
-OpenAIProviderLegacy = OpenAIProvider
-GeminiProviderLegacy = GeminiProvider
-AnthropicProviderLegacy = AnthropicProvider
-MetaRelayProviderLegacy = MetaRelayProvider
-
 
 def provider_for(name: str, key: str, model: str, extras: Dict[str, Any] | None = None) -> BaseProvider:
     extras = extras or {}

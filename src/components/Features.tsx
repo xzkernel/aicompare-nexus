@@ -1,17 +1,11 @@
 import { BarChart2, KeyRound, Terminal, Layers } from "lucide-react";
 
-/**
- * Stitch: py-stack-lg px-margin-safe, flex md:flex-row gap-stack-lg.
- * 1/3 sticky headline col, 2/3 grid-cols-2 card mosaic, gap-stack-md.
- * Cards: terminal-border bg-[#050505] p-gutter h-64/h-80, card 3 md:-mt-16.
- */
-
 const CARDS = [
   {
     id: "compare",
     Icon: BarChart2,
     title: "Side-by-Side Comparison",
-    body: "Real-time lateral visual benchmarks across models simultaneously with custom diff highlighting.",
+    body: "Stream responses from two models side by side with line-level diff highlighting.",
     height: "h-64",
     stagger: "",
     snippet: null,
@@ -32,13 +26,13 @@ const CARDS = [
     body: "Deploy the frontend and backend on your infrastructure while continuing to route requests to your selected external providers.",
     height: "h-80",
     stagger: "md:-mt-16",
-    snippet: "$ docker compose -f docker-compose.prod.yml up -d --build\n> Frontend: localhost:8080\n> Backend: localhost:8001",
+    snippet: "$ docker compose -f docker-compose.prod.yml up -d --build\n> Frontend: 127.0.0.1:8080\n> Backend: internal network",
   },
   {
     id: "layers",
     Icon: Layers,
-    title: "Metadata Analysis",
-    body: "Analyze latency, token usage, and cost-per-execution before moving to production scaling.",
+    title: "Comparison Signals",
+    body: "Review response latency, estimated output length, and line-level divergence for each comparison.",
     height: "h-64",
     stagger: "",
     snippet: null,
@@ -51,19 +45,17 @@ export function Features() {
       <div className="mx-auto max-w-[1440px]">
         <div className="flex flex-col gap-[48px] md:flex-row">
 
-          {/* 1/3: sticky headline column — Stitch exact */}
           <div className="w-full md:w-1/3">
             <div className="sticky top-32">
               <h2 className="landing-serif-display text-[32px] leading-[1.2] tracking-[-0.02em] text-white">
                 Technical<br />Capabilities.
               </h2>
               <p className="mt-[16px] max-w-xs text-sm text-white/50">
-                Built for architects who demand deterministic outputs from probabilistic systems.
+                Built for teams comparing probabilistic model responses in one consistent workflow.
               </p>
             </div>
           </div>
 
-          {/* 2/3: card mosaic — Stitch exact */}
           <div className="grid w-full grid-cols-1 gap-[16px] md:w-2/3 md:grid-cols-2">
             {CARDS.map((card) => (
               <div

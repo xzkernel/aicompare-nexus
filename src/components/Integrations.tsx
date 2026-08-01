@@ -1,9 +1,3 @@
-/**
- * Stitch: py-stack-lg px-margin-safe. max-w-container-max.
- * No section header above the table — table starts immediately.
- * 4-column grid: Provider | Supported Models | Routing Protocol | Setup.
- */
-
 const PROVIDER_ROWS = [
   {
     name: "OpenAI",
@@ -38,7 +32,6 @@ export function Integrations() {
       <div className="mx-auto max-w-[1440px]">
 
         <div className="terminal-border overflow-hidden">
-          {/* Header row — Stitch: 4-col, bg-surface-container-low */}
           <div className="grid grid-cols-1 border-b border-white/10 bg-[#1c1b1b] md:grid-cols-4">
             <div className="border-r border-white/10 p-[24px]">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white">Provider</span>
@@ -54,7 +47,6 @@ export function Integrations() {
             </div>
           </div>
 
-          {/* Data rows — Stitch: 4-col, provider name text-body-lg (24px) */}
           {PROVIDER_ROWS.map((row) => (
             <div
               key={row.name}
@@ -77,7 +69,6 @@ export function Integrations() {
           ))}
         </div>
 
-        {/* Footer row — Stitch exact */}
         <div className="mt-[16px] flex items-center justify-between font-mono text-[10px] text-white/30">
           <span>KEYS TRANSIT YOUR CONFIGURED MODELWISE BACKEND</span>
           <span>BACKEND DOES NOT INTENTIONALLY PERSIST KEYS</span>

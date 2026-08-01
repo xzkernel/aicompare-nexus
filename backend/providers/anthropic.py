@@ -1,7 +1,5 @@
 import json
 
-import logging
-
 import time
 
 from typing import AsyncIterator, List, Optional
@@ -19,13 +17,9 @@ from services.search.normalize import from_anthropic_citations, merge_metadata
 
 
 
-from .base import BaseProvider
+from .base import BaseProvider, MAX_PROVIDER_OUTPUT_CHARS
 
 from .stream_events import ProviderStreamEvent
-
-
-
-logger = logging.getLogger(__name__)
 
 
 
@@ -106,11 +100,14 @@ class AnthropicProvider(BaseProvider):
     async def complete(self, prompt: str, search: Optional[ResolvedSearchOptions] = None) -> str:
 
         parts: List[str] = []
+        length = 0
 
         async for event in self.stream_events(prompt, search):
 
             if event.kind == "token":
-
+                length += len(event.text)
+                if length > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
                 parts.append(event.text)
 
         return "".join(parts)
@@ -133,9 +130,12 @@ class AnthropicProvider(BaseProvider):
 
         metadata = None
 
-        search_started = time.time()
+        search_started = time.monotonic()
 
         searching = False
+        tool_inputs: dict[int, str] = {}
+        emitted_text = False
+        terminal = False
 
 
 
@@ -180,6 +180,9 @@ class AnthropicProvider(BaseProvider):
 
 
                         event_type = data.get("type")
+
+                        if event_type == "error" or data.get("error") is not None:
+                            raise Exception("Anthropic stream failed")
 
 
 
@@ -227,6 +230,17 @@ class AnthropicProvider(BaseProvider):
 
                                             )
 
+                            index = data.get("index")
+                            initial_input = block.get("input")
+                            if isinstance(index, int) and isinstance(initial_input, dict):
+                                query = initial_input.get("query")
+                                if isinstance(query, str) and query and query not in queries:
+                                    queries.append(query)
+                                    yield ProviderStreamEvent(
+                                        kind="search_sources",
+                                        data={"queries": [query], "provider": "anthropic"},
+                                    )
+
 
 
                         elif event_type == "content_block_delta":
@@ -241,17 +255,22 @@ class AnthropicProvider(BaseProvider):
 
                                 if text:
 
+                                    emitted_text = True
+
                                     yield ProviderStreamEvent(kind="token", text=text)
 
                             elif delta_type == "input_json_delta":
 
                                 partial = delta.get("partial_json") or ""
 
-                                if "query" in partial:
+                                index = data.get("index")
+                                if isinstance(index, int) and partial:
+
+                                    tool_inputs[index] = tool_inputs.get(index, "") + partial
 
                                     try:
 
-                                        parsed = json.loads(partial)
+                                        parsed = json.loads(tool_inputs[index])
 
                                         q = parsed.get("query")
 
@@ -266,6 +285,8 @@ class AnthropicProvider(BaseProvider):
                                                 data={"queries": [q], "provider": "anthropic"},
 
                                             )
+
+                                        tool_inputs.pop(index, None)
 
                                     except json.JSONDecodeError:
 
@@ -282,12 +303,15 @@ class AnthropicProvider(BaseProvider):
 
 
                         elif event_type == "message_delta":
-
-                            pass
+                            delta = data.get("delta") or {}
+                            if isinstance(delta, dict) and delta.get("stop_reason") == "max_tokens":
+                                raise Exception("Anthropic output limit reached before completion")
 
 
 
                         elif event_type == "message_stop":
+
+                            terminal = True
 
                             if citations or queries:
 
@@ -309,7 +333,7 @@ class AnthropicProvider(BaseProvider):
 
                 if metadata:
 
-                    metadata.search_latency_ms = int((time.time() - search_started) * 1000)
+                    metadata.search_latency_ms = int((time.monotonic() - search_started) * 1000)
 
                     yield ProviderStreamEvent(
 
@@ -318,6 +342,11 @@ class AnthropicProvider(BaseProvider):
                         data={"metadata": metadata.to_dict()},
 
                     )
+
+            if not emitted_text:
+                raise Exception("Anthropic returned no answer text")
+            if not terminal:
+                raise Exception("Anthropic stream terminated unexpectedly")
 
         except httpx.HTTPStatusError as e:
 
@@ -331,7 +360,7 @@ class AnthropicProvider(BaseProvider):
 
             log_provider_error("Anthropic stream error", e)
 
-            raise Exception("Anthropic stream failed") from None
+            raise e from None
 
 
 

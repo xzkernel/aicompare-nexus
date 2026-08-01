@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a focused improvement to ModelWise
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ModelWise focuses on model comparison, provider routing, registry data, and local evaluation state. Search existing issues before proposing a change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need or limitation should this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change and its expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add sanitized examples, provider documentation, or screenshots when useful.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for similar requests.
+          required: true
+        - label: I have not included credentials, environment values, or private data.
+          required: true

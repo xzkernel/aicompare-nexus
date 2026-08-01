@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-const REPO = "https://github.com/Archiixyz/aicompare-nexus";
+const REPO = "https://github.com/xzkernel/aicompare-nexus";
 
 export const Footer = () => {
   const { t } = useTranslation();

@@ -1,7 +1,5 @@
 import json
 
-import logging
-
 import time
 
 from typing import AsyncIterator, Optional
@@ -19,15 +17,9 @@ from services.search.normalize import from_gemini_grounding, merge_metadata
 
 
 
-from .base import BaseProvider
+from .base import BaseProvider, MAX_PROVIDER_OUTPUT_CHARS
 
 from .stream_events import ProviderStreamEvent
-
-
-
-logger = logging.getLogger(__name__)
-
-
 
 
 
@@ -117,11 +109,14 @@ class GeminiProvider(BaseProvider):
     async def complete(self, prompt: str, search: Optional[ResolvedSearchOptions] = None) -> str:
 
         parts = []
+        length = 0
 
         async for event in self.stream_events(prompt, search):
 
             if event.kind == "token":
-
+                length += len(event.text)
+                if length > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
                 parts.append(event.text)
 
         return "".join(parts)
@@ -142,7 +137,9 @@ class GeminiProvider(BaseProvider):
 
         queries_emitted: set[str] = set()
 
-        search_started = time.time()
+        search_started = time.monotonic()
+        emitted_text = False
+        terminal = False
 
         try:
 
@@ -181,6 +178,26 @@ class GeminiProvider(BaseProvider):
                         except json.JSONDecodeError:
 
                             continue
+
+                        if not isinstance(data, dict):
+                            continue
+                        if data.get("error") is not None:
+                            raise Exception("Google stream failed")
+                        feedback = data.get("promptFeedback") or {}
+                        if isinstance(feedback, dict) and feedback.get("blockReason"):
+                            raise Exception("Google response was blocked by safety filtering")
+                        for candidate in data.get("candidates") or []:
+                            if not isinstance(candidate, dict):
+                                continue
+                            reason = str(candidate.get("finishReason") or "").upper()
+                            if reason == "MAX_TOKENS":
+                                raise Exception("Google output limit reached before completion")
+                            if reason in {"SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "RECITATION"}:
+                                raise Exception("Google response was blocked by safety filtering")
+                            if reason:
+                                if reason != "STOP":
+                                    raise Exception("Google response did not complete successfully")
+                                terminal = True
 
 
 
@@ -230,13 +247,15 @@ class GeminiProvider(BaseProvider):
 
                         if delta:
 
+                            emitted_text = True
+
                             yield ProviderStreamEvent(kind="token", text=delta)
 
 
 
             if search and search.should_use_search and metadata:
 
-                metadata.search_latency_ms = int((time.time() - search_started) * 1000)
+                metadata.search_latency_ms = int((time.monotonic() - search_started) * 1000)
 
                 yield ProviderStreamEvent(
 
@@ -245,6 +264,11 @@ class GeminiProvider(BaseProvider):
                     data={"metadata": metadata.to_dict()},
 
                 )
+
+            if not emitted_text:
+                raise Exception("Google returned no answer text")
+            if not terminal:
+                raise Exception("Google stream terminated unexpectedly")
 
         except httpx.HTTPStatusError as e:
 
@@ -258,7 +282,7 @@ class GeminiProvider(BaseProvider):
 
             log_provider_error("Gemini stream error", e)
 
-            raise Exception("Google stream failed") from None
+            raise e from None
 
 
 

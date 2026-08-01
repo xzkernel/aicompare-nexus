@@ -1,19 +1,17 @@
-from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from typing import Annotated, Any, Dict, List, Optional
 
 from schemas.search import SearchMode
-
-_MAX_PROMPT = 32_000
-_MAX_MODEL_ID = 128
-_MAX_PROVIDER_ID = 64
-
+from schemas.stream import ModelId, Prompt, ProviderId
 
 class AskRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=_MAX_PROMPT)
-    leftModel: str = Field(..., min_length=1, max_length=_MAX_MODEL_ID)
-    rightModel: str = Field(..., min_length=1, max_length=_MAX_MODEL_ID)
-    leftProvider: Optional[str] = Field(default=None, max_length=_MAX_PROVIDER_ID)
-    rightProvider: Optional[str] = Field(default=None, max_length=_MAX_PROVIDER_ID)
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: Prompt
+    leftModel: ModelId
+    rightModel: ModelId
+    leftProvider: Optional[ProviderId] = None
+    rightProvider: Optional[ProviderId] = None
     searchMode: Optional[SearchMode] = None
 
 
@@ -29,14 +27,25 @@ class AskResponse(BaseModel):
 
 class ProviderSpec(BaseModel):
     """One model slot — keys resolved from BYOK headers, never from body."""
-    label: str = Field(..., min_length=1, max_length=64)
-    model: str = Field(..., min_length=1, max_length=_MAX_MODEL_ID)
-    provider: Optional[str] = Field(default=None, max_length=_MAX_PROVIDER_ID)
+    model_config = ConfigDict(extra="forbid")
+
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+    model: ModelId
+    provider: Optional[ProviderId] = None
 
 
 class CompareRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=_MAX_PROMPT)
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: Prompt
     providers: List[ProviderSpec] = Field(..., min_length=1, max_length=5)
+
+    @model_validator(mode="after")
+    def labels_are_unique(self):
+        labels = [spec.label for spec in self.providers]
+        if len(labels) != len(set(labels)):
+            raise ValueError("provider labels must be unique")
+        return self
 
 
 class CompareResponse(BaseModel):

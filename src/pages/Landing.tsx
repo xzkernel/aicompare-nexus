@@ -7,11 +7,6 @@ import { Integrations } from "../components/Integrations";
 import { FAQ } from "../components/FAQ";
 import { Footer } from "../components/Footer";
 
-/**
- * Section cadence matching Stitch:
- * Hero (text) → Product Mockup → Features → Workflow → Providers → FAQ → Footer
- * Alternating bg: #080808 / #0c0f0f / #080808 / #0c0f0f / #080808 / #0c0f0f / #0c0f0f
- */
 export function Landing() {
   return (
     <div className="landing-page">

@@ -8,6 +8,7 @@ import { parseSearchMetadata } from "@/lib/search-metadata";
 import type { SideSearchCapability } from "@/lib/search-capability-state";
 import { parseSearchCapability } from "@/lib/search-capability-state";
 import { apiUrl } from "@/lib/api-url";
+import { redactSensitiveText } from "@/lib/redact-error";
 
 export type StreamSide = "left" | "right";
 export type SearchMode = "auto" | "force" | "off";
@@ -98,9 +99,9 @@ function parseSearchSideEvent(
   }
 }
 
-function parseSseChunk(buffer: string): { events: StreamEvent[]; rest: string } {
+export function parseSseChunk(buffer: string): { events: StreamEvent[]; rest: string } {
   const events: StreamEvent[] = [];
-  const parts = buffer.split("\n\n");
+  const parts = buffer.split(/\r\n\r\n|\n\n|\r\r/);
   const rest = parts.pop() ?? "";
 
   for (const part of parts) {
@@ -108,7 +109,7 @@ function parseSseChunk(buffer: string): { events: StreamEvent[]; rest: string } 
     let eventType = "message";
     const dataLines: string[] = [];
 
-    for (const line of part.split("\n")) {
+    for (const line of part.split(/\r\n|\n|\r/)) {
       if (line.startsWith("event:")) {
         eventType = line.slice(6).trim();
       } else if (line.startsWith("data:")) {
@@ -152,7 +153,7 @@ function parseSseChunk(buffer: string): { events: StreamEvent[]; rest: string } 
           events.push({
             type: "error",
             side: data.side as StreamSide,
-            message: String(data.message ?? "Stream error"),
+            message: redactSensitiveText(String(data.message ?? "Stream error")),
             elapsed: data.elapsed != null ? Number(data.elapsed) : undefined,
           });
           break;
@@ -204,14 +205,17 @@ export async function consumeCompareStream(options: {
   });
 
   if (!response.ok) {
-    let message = "Stream request failed";
+    const raw = await response.text();
+    let message = raw || `HTTP ${response.status}`;
     try {
-      const err = await response.json();
-      message = (err as { detail?: string }).detail ?? message;
+      const err = JSON.parse(raw) as unknown;
+      if (err && typeof err === "object" && typeof (err as { detail?: unknown }).detail === "string") {
+        message = (err as { detail: string }).detail;
+      }
     } catch {
-      message = (await response.text()) || `HTTP ${response.status}`;
+      // Plain-text provider errors are already captured in message.
     }
-    throw new Error(message);
+    throw new Error(redactSensitiveText(message));
   }
 
   if (!response.body) {
@@ -234,7 +238,7 @@ export async function consumeCompareStream(options: {
 
       const chunk = decoder.decode(value, { stream: true });
 
-      totalBytes += chunk.length;
+      totalBytes += value.byteLength;
       if (totalBytes > MAX_BUFFER_BYTES) {
         throw new Error("Stream response exceeded size limit");
       }
@@ -253,6 +257,7 @@ export async function consumeCompareStream(options: {
       }
     }
 
+    buffer += decoder.decode();
     if (buffer.trim()) {
       const { events } = parseSseChunk(buffer + "\n\n");
       for (const event of events) {

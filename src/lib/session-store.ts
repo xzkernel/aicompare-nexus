@@ -15,11 +15,12 @@ import {
   importSessionRecords,
   listSessionRecords,
   putSessionRecord,
-  softDeleteSessionRecord,
+  deleteSessionRecord,
   toggleSessionPinnedRecord,
   updateSessionVerdictRecord,
   type ComparisonSessionInput,
   type ComparisonSessionRecord,
+  type SessionImportResult,
   type ComparisonVerdict,
 } from "@/lib/idb/sessions-store";
 import { initLocalDatabase, subscribeLocalDb } from "@/lib/idb/db";
@@ -50,7 +51,7 @@ export async function saveComparisonSession(
 
 export async function deleteComparisonSession(id: string): Promise<void> {
   await ensureLocalDbReady();
-  return softDeleteSessionRecord(id);
+  return deleteSessionRecord(id);
 }
 
 export async function clearComparisonSessions(): Promise<void> {
@@ -72,9 +73,9 @@ export async function updateComparisonSessionVerdict(
 }
 
 export async function importComparisonSessions(
-  sessions: ComparisonSessionRecord[],
+  sessions: Array<ComparisonSessionInput & { id?: string; timestamp?: number }>,
   options?: { skipSync?: boolean }
-): Promise<void> {
+): Promise<SessionImportResult> {
   await ensureLocalDbReady();
   return importSessionRecords(sessions, options);
 }

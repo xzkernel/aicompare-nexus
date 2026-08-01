@@ -29,10 +29,11 @@ The frontend sends keys as headers (never in JSON body):
 | `X-Meta-Key-Header` | Optional auth header name |
 | `X-Custom-API-Key` | Custom endpoint |
 | `X-Custom-Base-Url` | Custom endpoint URL |
+| `X-Custom-Key-Header` | Optional custom authentication header name |
 
 ## Routing logic
 
-1. Client sends `leftModel` / `rightModel` (e.g. `google:gemini-2.5-flash`)
+1. Client sends `leftModel` / `rightModel` (for example, `gpt-5.5` and `gemini-3.5-flash`)
 2. Optional `leftProvider` / `rightProvider` hint
 3. `model_resolver.resolve_side()` picks:
    - **Direct** — if matching key exists
@@ -60,7 +61,7 @@ For OpenAI-compatible APIs:
 
 - Active keys are held in browser memory by default and clear on reload or tab close
 - Optional persistence uses a password-protected encrypted IndexedDB vault or encrypted export
-- Keys are never written to backend disk or cloud storage by ModelWise
+- The backend application has no API-key persistence feature; deployment operators must also prevent infrastructure logs from recording sensitive headers
 - Clear active keys or delete the encrypted vault anytime from Settings
 
 ## Getting keys

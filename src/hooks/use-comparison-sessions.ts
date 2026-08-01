@@ -24,16 +24,19 @@ export function useComparisonSessions() {
   });
 
   const refresh = useCallback(async () => {
-    const [list, s] = await Promise.all([listComparisonSessions(), getSessionStats()]);
-    setSessions(list);
-    setStats(s);
-    setLoading(false);
+    try {
+      const [list, s] = await Promise.all([listComparisonSessions(), getSessionStats()]);
+      setSessions(list);
+      setStats(s);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch(() => undefined);
     return subscribeSessions(() => {
-      void refresh();
+      void refresh().catch(() => undefined);
     });
   }, [refresh]);
 
@@ -42,10 +45,10 @@ export function useComparisonSessions() {
     stats,
     loading,
     refresh,
-    remove: (id: string) => void deleteComparisonSession(id).then(refresh),
-    clearAll: () => void clearComparisonSessions().then(refresh),
-    togglePin: (id: string) => void toggleSessionPinned(id).then(refresh),
+    remove: (id: string) => void deleteComparisonSession(id).then(refresh).catch(() => undefined),
+    clearAll: () => void clearComparisonSessions().then(refresh).catch(() => undefined),
+    togglePin: (id: string) => void toggleSessionPinned(id).then(refresh).catch(() => undefined),
     updateVerdict: (id: string, verdict: ComparisonVerdict | undefined) =>
-      void updateComparisonSessionVerdict(id, verdict).then(refresh),
+      void updateComparisonSessionVerdict(id, verdict).then(refresh).catch(() => undefined),
   };
 }

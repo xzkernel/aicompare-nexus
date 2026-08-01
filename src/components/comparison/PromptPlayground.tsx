@@ -27,6 +27,8 @@ import {
   buildStaticSearchCapability,
   isSearchActuallyUsed,
 } from "@/lib/search-capability-state";
+import { parseModelValue } from "@/lib/model-registry";
+import { MAX_PROMPT_CHARS } from "@/lib/session-import";
 
 export function PromptPlayground({
   profileId = "default",
@@ -38,7 +40,7 @@ export function PromptPlayground({
   onSessionSaved?: (sessionId: string) => void;
 }) {
   const { t } = useTranslation();
-  const { getApiKey, apiKeys } = useSecureApiKeys(profileId);
+  const { getApiKey, apiKeys, redactKeys } = useSecureApiKeys(profileId);
   const { registry } = useModelRegistry(profileId);
   const { toast } = useToast();
   const [leftModel, setLeftModel] = useState("openai:gpt-5.5");
@@ -140,7 +142,7 @@ export function PromptPlayground({
   }, [registry, isComparing]);
 
   const getModelDisplayName = (modelString: string): string => {
-    const [providerId] = modelString.split(":");
+    const { providerId } = parseModelValue(modelString);
     const providerName = getProviderDisplayName(providerId as ProviderId);
     const modelName = getRegistryModelName(modelString);
     return `${providerName} — ${modelName}`;
@@ -263,8 +265,8 @@ export function PromptPlayground({
     const runSearchMode = searchMode;
     const leftResolved = execution.leftResolved;
     const rightResolved = execution.rightResolved;
-    const [leftProviderId, leftModelId] = runLeftModel.split(":");
-    const [rightProviderId, rightModelId] = runRightModel.split(":");
+    const { providerId: leftProviderId, modelId: leftModelId } = parseModelValue(runLeftModel);
+    const { providerId: rightProviderId, modelId: rightModelId } = parseModelValue(runRightModel);
 
     setIsComparing(true);
     setIsFinalizing(false);
@@ -310,7 +312,7 @@ export function PromptPlayground({
     runResponsesRef.current = initialResponses;
     setResponses([...initialResponses]);
 
-    const headers = buildCompareHeaders(leftResolved, rightResolved, apiKeys, getApiKey);
+    const headers = buildCompareHeaders(leftResolved, rightResolved);
 
     const applyEvent = (event: StreamEvent) => {
       if (generation !== generationRef.current) return;
@@ -445,7 +447,7 @@ export function PromptPlayground({
             status: "error",
             response:
               event.side === "left" ? pendingRef.current.left : pendingRef.current.right,
-            error: event.message,
+            error: redactKeys(event.message),
             responseTime: event.elapsed ? Math.round(event.elapsed * 1000) : r.responseTime,
           }));
           break;
@@ -481,7 +483,7 @@ export function PromptPlayground({
       const message =
         error instanceof TypeError || raw.toLowerCase().includes("failed to fetch")
           ? "Backend unreachable — start API on port 8001 (cd backend && python -m uvicorn main:app --port 8001)"
-          : raw;
+          : redactKeys(raw);
       flushPending();
       updateSide("left", (response) =>
         response.status === "complete" || response.status === "error"
@@ -572,7 +574,7 @@ export function PromptPlayground({
   const handlePromptChange = (value: string) => {
     if (isComparing || value === prompt) return;
     clearStaleResults();
-    setPrompt(value);
+    setPrompt(value.slice(0, MAX_PROMPT_CHARS));
   };
 
   const handleLeftModelChange = (value: string) => {

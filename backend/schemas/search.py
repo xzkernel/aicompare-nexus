@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class SearchMode(str, Enum):
@@ -12,6 +12,8 @@ class SearchMode(str, Enum):
 
 class ResolvedSearchOptions(BaseModel):
     """Internal resolved search policy for providers."""
+
+    model_config = ConfigDict(extra="forbid")
 
     active: bool = False
     force: bool = False

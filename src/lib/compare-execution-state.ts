@@ -7,6 +7,7 @@ import { buildStaticSearchCapability } from "@/lib/search-capability-state";
 import type { SearchMode } from "@/lib/search-metadata";
 
 import type { ApiKeys } from "@/lib/secure-api-keys";
+import { MAX_PROMPT_CHARS } from "@/lib/session-import";
 
 
 
@@ -220,6 +221,16 @@ export function deriveCompareExecutionState(input: CompareExecutionInput): Compa
 
     };
 
+  }
+
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    return {
+      runnable: false,
+      blockingReason: "compare.blocking.promptTooLong",
+      warnings,
+      leftResolved,
+      rightResolved,
+    };
   }
 
 

@@ -1,11 +1,5 @@
 import { Link } from "react-router-dom";
 
-/**
- * Stitch: py-stack-lg px-margin-safe bg-surface-container-lowest (#0e0e0e).
- * max-w-4xl, h2 centered mb-stack-lg.
- * Vertical line, space-y-24, w-5/12 text cols, w-10 h-10 rounded-full nodes.
- */
-
 const STEPS = [
   {
     n: "01",
@@ -38,7 +32,6 @@ export function HowItWorks() {
     <section className="bg-[#0e0e0e] px-[40px] py-[48px]">
       <div className="mx-auto max-w-4xl">
 
-        {/* Stitch: centered h2, mb-stack-lg */}
         <h2 className="landing-serif-display mb-[48px] text-center text-[32px] leading-[1.2] tracking-[-0.02em] text-white">
           The Workflow.
         </h2>

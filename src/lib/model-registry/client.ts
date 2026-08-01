@@ -16,6 +16,8 @@ export const REGISTRY_POLL_MS = 45_000;
 let cached: NormalizedRegistry | null = null;
 let cachedAt = 0;
 let inflight: Promise<NormalizedRegistry> | null = null;
+let inflightRequestId = 0;
+let requestSequence = 0;
 const listeners = new Set<() => void>();
 
 function emitRegistryChange(): void {
@@ -78,8 +80,7 @@ function mergeOpenCodeFallback(data: ModelRegistryResponse): ModelRegistryRespon
 }
 
 export function getCachedRegistry(): NormalizedRegistry | null {
-  if (cached && Date.now() - cachedAt < REGISTRY_CACHE_TTL_MS) return cached;
-  return null;
+  return cached;
 }
 
 export function getRegistryCacheAgeMs(): number {
@@ -87,11 +88,16 @@ export function getRegistryCacheAgeMs(): number {
   return Date.now() - cachedAt;
 }
 
-export function setCachedRegistry(registry: NormalizedRegistry): void {
-  const changed = cached == null || cached.fingerprint !== registry.fingerprint;
+function commitCachedRegistry(registry: NormalizedRegistry): void {
+  const changed = cached !== registry;
   cached = registry;
   cachedAt = Date.now();
   if (changed) emitRegistryChange();
+}
+
+export function setCachedRegistry(registry: NormalizedRegistry): void {
+  requestSequence += 1;
+  commitCachedRegistry(registry);
 }
 
 async function fetchRegistryFromNetwork(): Promise<NormalizedRegistry> {
@@ -123,27 +129,35 @@ export async function fetchModelRegistry(force = false): Promise<NormalizedRegis
 
   if (inflight && !force) return inflight;
 
-  inflight = (async () => {
+  const requestId = ++requestSequence;
+  const request = (async () => {
     try {
       const normalized = await fetchRegistryFromNetwork();
-      setCachedRegistry(normalized);
-      return normalized;
+      if (requestId === requestSequence) commitCachedRegistry(normalized);
+      return requestId === requestSequence ? normalized : cached ?? normalized;
     } catch {
-      if (cached && !force) return cached;
+      if (cached) return cached;
       const fb = bundledRegistry("offline");
-      setCachedRegistry(fb);
-      return fb;
+      if (requestId === requestSequence) commitCachedRegistry(fb);
+      return cached ?? fb;
     } finally {
-      inflight = null;
+      if (inflightRequestId === requestId) {
+        inflight = null;
+        inflightRequestId = 0;
+      }
     }
   })();
+  inflight = request;
+  inflightRequestId = requestId;
 
-  return inflight;
+  return request;
 }
 
 export function invalidateModelRegistry(): void {
+  requestSequence += 1;
   cached = null;
   cachedAt = 0;
   inflight = null;
+  inflightRequestId = 0;
   emitRegistryChange();
 }

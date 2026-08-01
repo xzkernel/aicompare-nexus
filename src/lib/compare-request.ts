@@ -18,24 +18,21 @@ export function resolveProviderForSlot(
 ): ResolvedProvider | null {
   let key = getApiKey(providerId as ProviderId);
   let name = providerId;
+  let forcedRelayId: "openrouter" | undefined;
 
-  if (providerId === "anthropic" && !key) {
-    if ((apiKeys.claudeProvider || "anthropic") === "openrouter") {
-      const relay = getApiKey("meta");
-      if (relay) {
-        key = relay;
-        name = "meta";
-      }
+  if (providerId === "anthropic" && (apiKeys.claudeProvider || "anthropic") === "openrouter") {
+    key = getApiKey("meta");
+    if (key) {
+      name = "meta";
+      forcedRelayId = "openrouter";
     }
   }
 
-  if (providerId === "google" && !key) {
-    if ((apiKeys.googleProvider || "google") === "openrouter") {
-      const relay = getApiKey("meta");
-      if (relay) {
-        key = relay;
-        name = "meta";
-      }
+  if (providerId === "google" && (apiKeys.googleProvider || "google") === "openrouter") {
+    key = getApiKey("meta");
+    if (key) {
+      name = "meta";
+      forcedRelayId = "openrouter";
     }
   }
 
@@ -44,7 +41,7 @@ export function resolveProviderForSlot(
   const extras: Record<string, string | undefined> = {};
 
   if (name === "meta") {
-    const relayId = apiKeys.metaRelayProvider || "openrouter";
+    const relayId = forcedRelayId ?? apiKeys.metaRelayProvider ?? "openrouter";
     const relayConfig = PROVIDER_CONFIG.meta.relayConfig?.options.find((o) => o.id === relayId);
     if (relayConfig) {
       extras.base_url = relayConfig.baseUrl;
@@ -61,9 +58,7 @@ export function resolveProviderForSlot(
 /** Build BYOK headers for /api/v1/stream and /api/v1/ask. */
 export function buildCompareHeaders(
   left: ResolvedProvider | null,
-  right: ResolvedProvider | null,
-  apiKeys: ApiKeys,
-  getApiKey: (id: ProviderId) => string | null
+  right: ResolvedProvider | null
 ): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

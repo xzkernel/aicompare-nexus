@@ -26,7 +26,12 @@ export type ComparisonSessionInput = Omit<
   "id" | "timestamp" | "schemaVersion" | "updatedAt" | "deviceId" | "deletedAt"
 >;
 
-const MAX_SESSIONS = 100;
+export const MAX_SESSIONS = 100;
+
+export type SessionImportResult = {
+  imported: number;
+  skipped: number;
+};
 
 function sortSessions(rows: ComparisonSessionRecord[]): ComparisonSessionRecord[] {
   return [...rows].sort((a, b) => {
@@ -51,7 +56,7 @@ export async function getSessionRecord(id: string): Promise<ComparisonSessionRec
 
 export async function putSessionRecord(
   input: ComparisonSessionInput & { id?: string; timestamp?: number },
-  options?: { skipSync?: boolean }
+  _options?: { skipSync?: boolean }
 ): Promise<ComparisonSessionRecord> {
   const db = await getLocalDb();
   const now = Date.now();
@@ -74,7 +79,7 @@ export async function putSessionRecord(
     const toRemove = sorted.slice(MAX_SESSIONS);
     const tx = db.transaction("comparison_sessions", "readwrite");
     for (const s of toRemove) {
-      await tx.store.put({ ...s, deletedAt: now, updatedAt: now });
+      await tx.store.delete(s.id);
     }
     await tx.done;
   }
@@ -83,24 +88,15 @@ export async function putSessionRecord(
   return record;
 }
 
-export async function softDeleteSessionRecord(id: string): Promise<void> {
+export async function deleteSessionRecord(id: string): Promise<void> {
   const db = await getLocalDb();
-  const row = await db.get("comparison_sessions", id);
-  if (!row) return;
-  const now = Date.now();
-  await db.put("comparison_sessions", { ...row, deletedAt: now, updatedAt: now });
+  await db.delete("comparison_sessions", id);
   notifyLocalDbChange();
 }
 
 export async function clearSessionRecords(): Promise<void> {
   const db = await getLocalDb();
-  const all = await db.getAll("comparison_sessions");
-  const now = Date.now();
-  const tx = db.transaction("comparison_sessions", "readwrite");
-  for (const row of all) {
-    await tx.store.put({ ...row, deletedAt: now, updatedAt: now });
-  }
-  await tx.done;
+  await db.clear("comparison_sessions");
   notifyLocalDbChange();
 }
 
@@ -123,7 +119,7 @@ export async function updateSessionVerdictRecord(
 
 export async function upsertSessionRecordLocal(
   record: ComparisonSessionRecord,
-  options?: { skipSync?: boolean }
+  _options?: { skipSync?: boolean }
 ): Promise<void> {
   const db = await getLocalDb();
   await db.put("comparison_sessions", record);
@@ -131,20 +127,37 @@ export async function upsertSessionRecordLocal(
 }
 
 export async function importSessionRecords(
-  sessions: ComparisonSessionRecord[],
-  options?: { skipSync?: boolean }
-): Promise<void> {
+  sessions: Array<ComparisonSessionInput & { id?: string; timestamp?: number }>,
+  _options?: { skipSync?: boolean }
+): Promise<SessionImportResult> {
+  const db = await getLocalDb();
+  const tx = db.transaction("comparison_sessions", "readwrite");
+  const existing = await tx.store.getAll();
+  const usedIds = new Set(existing.map((record) => record.id));
+  let remaining = Math.max(0, MAX_SESSIONS - existing.filter((record) => record.deletedAt == null).length);
+  let imported = 0;
+
   for (const s of sessions) {
-    if (!s.id || !s.prompt) continue;
-    await putSessionRecord(
-      {
-        ...s,
-        id: s.id,
-        timestamp: s.timestamp ?? Date.now(),
-      },
-      options
-    );
+    if (!s.prompt || remaining === 0) continue;
+    let id = s.id;
+    if (!id || usedIds.has(id)) id = crypto.randomUUID();
+    usedIds.add(id);
+    const now = Date.now();
+    await tx.store.put({
+      ...s,
+      id,
+      timestamp: s.timestamp ?? now,
+      schemaVersion: ENTITY_SCHEMA_VERSION,
+      updatedAt: now,
+      deviceId: getDeviceId(),
+      deletedAt: null,
+    });
+    imported += 1;
+    remaining -= 1;
   }
+  await tx.done;
+  if (imported > 0) notifyLocalDbChange();
+  return { imported, skipped: sessions.length - imported };
 }
 
 export async function getSessionRecordStats() {

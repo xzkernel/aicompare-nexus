@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ModelWise — one-time VPS bootstrap (Ubuntu 22.04/24.04)
-# Run ON the server after project files are in /opt/modelwise (or set APP_DIR).
+# ModelWise one-time VPS bootstrap (Ubuntu 22.04/24.04).
+# Run on a server where the project and Docker Engine are already installed.
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/modelwise}"
@@ -14,14 +14,9 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-# --- Docker ---
 if ! command -v docker >/dev/null 2>&1; then
-  echo "==> Installing Docker..."
-  curl -fsSL https://get.docker.com | sh
-  systemctl enable docker
-  systemctl start docker
-else
-  echo "==> Docker already installed"
+  echo "ERROR: Docker Engine is required. Install it from https://docs.docker.com/engine/install/ubuntu/."
+  exit 1
 fi
 
 if ! docker compose version >/dev/null 2>&1; then
@@ -29,41 +24,45 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-# --- App directory ---
 if [[ ! -d "$APP_DIR" ]]; then
   echo "ERROR: $APP_DIR not found."
-  echo "Copy the project first, e.g. from your PC:"
-  echo "  scp -r ./aicompare-nexus-main root@YOUR_VPS_IP:/opt/modelwise"
   exit 1
 fi
 
 cd "$APP_DIR"
 
-# --- Environment ---
-if [[ ! -f .env ]]; then
-  cp .env.example .env
-  if [[ -n "$DOMAIN" ]]; then
-    sed -i "s|https://modelwise.example.com|https://${DOMAIN}|g" .env
-    sed -i "s|https://modelwise.example.com|http://${DOMAIN}|g" .env
-    # Also set http for first boot before TLS
-    grep -q "^CORS_ORIGINS=" .env && sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://${DOMAIN},https://${DOMAIN}|" .env
-  else
-    VPS_IP=$(curl -fsSL -4 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-    sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://${VPS_IP}:8080,http://127.0.0.1:8080|" .env
-    echo "==> No DOMAIN set — using http://${VPS_IP}:8080 in CORS_ORIGINS"
-  fi
-  echo "==> Created .env — review: nano $APP_DIR/.env"
+if [[ -z "$DOMAIN" ]]; then
+  echo "ERROR: Set DOMAIN to the public hostname served by your external TLS terminator."
+  exit 1
 fi
 
-# --- Firewall (optional but recommended) ---
+if [[ ! "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  echo "ERROR: DOMAIN must be a hostname without a scheme, port, or path."
+  exit 1
+fi
+
+if [[ ! -f .env ]]; then
+  if [[ ! -f .env.example ]]; then
+    echo "ERROR: .env.example not found."
+    exit 1
+  fi
+  cp .env.example .env
+  if grep -q "^CORS_ORIGINS=" .env; then
+    sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${DOMAIN}|" .env
+  else
+    printf '\nCORS_ORIGINS=https://%s\n' "$DOMAIN" >> .env
+  fi
+  echo "==> Created .env with an HTTPS-only public origin."
+fi
+
 if command -v ufw >/dev/null 2>&1; then
   ufw allow OpenSSH >/dev/null 2>&1 || ufw allow 22/tcp
-  ufw allow 8080/tcp comment 'ModelWise HTTP (temporary — use 443 after TLS)' >/dev/null 2>&1 || true
+  ufw allow 80/tcp comment 'TLS certificate redirect/challenge' >/dev/null 2>&1 || true
+  ufw allow 443/tcp comment 'ModelWise HTTPS' >/dev/null 2>&1 || true
   ufw --force enable >/dev/null 2>&1 || true
-  echo "==> UFW enabled (22, 8080). Add 80/443 when you configure HTTPS."
+  echo "==> UFW enabled for SSH, HTTP certificate handling, and HTTPS."
 fi
 
-# --- Build & start ---
 echo "==> Building and starting containers (first run may take several minutes)..."
 docker compose -f docker-compose.prod.yml up -d --build
 
@@ -71,13 +70,9 @@ echo ""
 echo "==> Done. Check status:"
 docker compose -f docker-compose.prod.yml ps
 echo ""
-curl -fsS "http://127.0.0.1:8001/health" && echo "" || echo "WARN: backend health check failed"
+curl -fsS "http://127.0.0.1:${FRONTEND_PORT:-8080}/health" >/dev/null \
+  && echo "Frontend proxy health check passed." \
+  || echo "WARN: frontend proxy health check failed"
 echo ""
-VPS_IP=$(curl -fsSL -4 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-echo "Open in browser: http://${VPS_IP}:8080"
-echo ""
-echo "Next steps:"
-echo "  1. Add provider keys in Settings → run a comparison"
-echo "  2. Point your domain A record to this VPS"
-echo "  3. Set up HTTPS (extend nginx.conf or use a managed TLS terminator)"
-echo "  4. Publish repo to GitHub, then on VPS: git pull && docker compose -f docker-compose.prod.yml up -d --build"
+echo "The app listens only on 127.0.0.1:${FRONTEND_PORT:-8080}."
+echo "Configure and verify an external TLS terminator before opening https://${DOMAIN}."

@@ -1,6 +1,6 @@
 # Deployment Guide
 
-ModelWise is a split full-stack app: a Vite SPA frontend and a FastAPI backend. The recommended managed deployment is Vercel for the frontend and Railway for the backend.
+ModelWise is a split full-stack application: a Vite SPA frontend and a FastAPI backend. This guide documents a Vercel frontend with a Railway backend; other hosts can use the same build and runtime boundaries.
 
 ## Vercel + Railway
 
@@ -45,13 +45,20 @@ Build command: npm run build
 Output directory: dist
 ```
 
-Set Vercel environment variables:
+The supplied `vercel.json` uses same-origin rewrites for `/api/*` and `/health`, with a fixed Railway destination for the hosted application. For that deployment, leave `VITE_API_URL` unset.
+
+For a different backend, choose one approach:
+
+1. Keep same-origin browser requests by leaving `VITE_API_URL` unset and changing the two rewrite destinations in `vercel.json` to your backend.
+2. Send browser requests directly to the backend by setting:
 
 ```env
 VITE_API_URL=https://your-backend.up.railway.app
 ```
 
-`vercel.json` rewrites non-API routes to `index.html` for React Router. API calls use `VITE_API_URL`, so `/api` is not handled by Vercel.
+`VITE_API_URL` is embedded in the frontend bundle at build time. With a value set, the browser calls that origin directly and Railway `CORS_ORIGINS` must allow the Vercel origin. With no value, requests use same-origin paths and the Vercel rewrites forward them.
+
+`vercel.json` also rewrites non-API routes to `index.html` for React Router. Its Content Security Policy allows connections only to the application origin and `https://aicompare-nexus-production.up.railway.app`. A deployment using a different direct `VITE_API_URL` must allow that exact origin in `connect-src`, or browsers will block API and SSE requests. Environment variables do not modify the static CSP.
 
 ### 3. Smoke Test
 
@@ -66,7 +73,8 @@ Playground -> run a streaming compare
 If the UI loads but compare fails, check:
 
 ```text
-VITE_API_URL exactly matches the Railway backend origin
+For same-origin mode, vercel.json API rewrites target the Railway backend
+For direct mode, VITE_API_URL and CSP connect-src match the Railway backend origin
 CORS_ORIGINS exactly includes the Vercel frontend origin
 Railway /health returns status ok
 ```
@@ -77,14 +85,14 @@ Run backend:
 
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
 Run frontend:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -96,7 +104,7 @@ No `VITE_API_URL` is needed locally because Vite proxies `/api` and `/health` to
 
 ## Docker / VPS
 
-For self-hosted Docker deployment, use `docker-compose.prod.yml` and `docs/SELF_HOSTING.md`. In same-origin nginx deployments, leave `VITE_API_URL` empty so the frontend calls `/api` and `/health` on the same host.
+For self-hosted Docker deployment, use `docker-compose.prod.yml` and [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md). Leave `VITE_API_URL` empty for the supplied nginx configuration so the frontend calls `/api` and `/health` on the same origin. Production Compose binds the HTTP frontend to loopback and does not publish the backend; put the frontend behind a TLS-terminating reverse proxy or load balancer.
 
 ## Security Notes
 
@@ -107,4 +115,5 @@ In production:
 - Use HTTPS for both frontend and backend.
 - Set `CORS_ORIGINS` to exact frontend origins, not `*`.
 - Keep `ENABLE_API_DOCS=false` unless you intentionally expose docs.
-- Keep sessions and preferences device-local; use export/import for manual backup.
+- Review the frontend CSP whenever the backend origin changes.
+- Treat browser storage as local application state, not as a backup; use export/import when a transferable copy is needed.

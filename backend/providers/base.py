@@ -10,6 +10,8 @@ from schemas.search import ResolvedSearchOptions
 
 from .stream_events import ProviderStreamEvent
 
+MAX_PROVIDER_OUTPUT_CHARS = 1_000_000
+
 
 
 

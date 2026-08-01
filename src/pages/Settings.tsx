@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
-import { useSecureApiKeys } from "@/lib/secure-api-keys";
+import {
+  isStrongVaultPassword,
+  MIN_VAULT_PASSWORD_LENGTH,
+  useSecureApiKeys,
+} from "@/lib/secure-api-keys";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { SETTINGS_SECTION_IDS, type SettingsSectionId } from "@/components/settings/settings-sections";
 
@@ -23,6 +28,7 @@ export default function Settings() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { toast } = useToast();
+  const { t } = useTranslation();
   
   const {
     apiKeys,
@@ -100,10 +106,10 @@ export default function Settings() {
 
   // Handle export
   const handleExport = async () => {
-    if (!password) {
+    if (!isStrongVaultPassword(password)) {
       toast({
-        title: "Password Required",
-        description: "Please enter a password to encrypt your keys.",
+        title: t("settings.vault.strongerPassword"),
+        description: t("settings.vault.passwordMinimum", { count: MIN_VAULT_PASSWORD_LENGTH }),
         variant: "destructive",
       });
       return;
@@ -156,10 +162,10 @@ export default function Settings() {
 
   // Handle save to IndexedDB
   const handleSaveToIndexedDB = async () => {
-    if (!password) {
+    if (!isStrongVaultPassword(password)) {
       toast({
-        title: "Password Required",
-        description: "Please enter a password to encrypt your keys.",
+        title: t("settings.vault.strongerPassword"),
+        description: t("settings.vault.passwordMinimum", { count: MIN_VAULT_PASSWORD_LENGTH }),
         variant: "destructive",
       });
       return;

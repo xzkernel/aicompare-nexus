@@ -4,8 +4,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsPanel, SettingsKeyField, RoutingToggle } from "./SettingsLayout";
 import type { SettingsHandlersProps } from "./settings-props";
+import { useTranslation } from "react-i18next";
 
 export function SettingsApiKeysSection(props: SettingsHandlersProps) {
+  const { t } = useTranslation();
   const {
     apiKeys,
     showKeys,
@@ -23,6 +25,17 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
     customValid,
     setApiKeys,
   } = props;
+  const openRouterRequired = apiKeys.googleProvider === "openrouter" || apiKeys.claudeProvider === "openrouter";
+  const updateRoute = (
+    field: "googleProvider" | "claudeProvider",
+    value: "google" | "anthropic" | "openrouter"
+  ) => {
+    setApiKeys({
+      ...apiKeys,
+      [field]: value,
+      ...(value === "openrouter" ? { metaRelayProvider: "openrouter" as const } : {}),
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -30,14 +43,14 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         <Alert className="border-stroke-subtle bg-bg-soft/50">
           <CheckCircle className="h-4 w-4 text-accent-green" />
           <AlertDescription className="font-mono text-[11px]">
-            At least one route is configured for playground requests.
+            {t("settings.api.routeConfigured")}
           </AlertDescription>
         </Alert>
       ) : (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-mono text-[11px]">
-            No API key route is configured. Add credentials below to enable model evaluation.
+            {t("settings.api.noRoutes")}
           </AlertDescription>
         </Alert>
       )}
@@ -73,12 +86,17 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
           <RoutingToggle
             label="Routing mode"
             value={apiKeys.googleProvider || "google"}
-            onChange={(id) => setApiKeys({ ...apiKeys, googleProvider: id as "google" | "openrouter" })}
+            onChange={(id) => updateRoute("googleProvider", id as "google" | "openrouter")}
             options={[
               { id: "google", label: "Direct" },
               { id: "openrouter", label: "OpenRouter" },
             ]}
           />
+          {apiKeys.googleProvider === "openrouter" && (
+            <p className="border border-stroke-subtle bg-bg-soft p-2 font-mono text-[10px] text-text-muted">
+              {t("settings.api.googleOpenRouter")}
+            </p>
+          )}
         </div>
       </SettingsPanel>
 
@@ -87,7 +105,7 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
           <RoutingToggle
             label="Routing mode"
             value={apiKeys.claudeProvider || "anthropic"}
-            onChange={(id) => setApiKeys({ ...apiKeys, claudeProvider: id as "anthropic" | "openrouter" })}
+            onChange={(id) => updateRoute("claudeProvider", id as "anthropic" | "openrouter")}
             options={[
               { id: "anthropic", label: "Direct" },
               { id: "openrouter", label: "OpenRouter" },
@@ -108,7 +126,7 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
           )}
           {apiKeys.claudeProvider === "openrouter" && (
             <p className="font-mono text-[10px] text-text-muted border border-stroke-subtle bg-bg-soft p-2">
-              Claude routes via OpenRouter — use Meta relay key below.
+              {t("settings.api.claudeOpenRouter")}
             </p>
           )}
         </div>
@@ -142,20 +160,26 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Meta / OpenRouter" description="Llama & relay models" icon={Key} status={{ label: metaValid ? "configured" : "missing", ok: metaValid }}>
+      <SettingsPanel title="Meta / Relay" description="Llama & relayed models" icon={Key} status={{ label: metaValid ? "configured" : "missing", ok: metaValid }}>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <span className="mw-label-mono text-text-muted">Relay service</span>
-            <Select value={apiKeys.metaRelayProvider} onValueChange={handleMetaRelayChange}>
+            <Select
+              value={openRouterRequired ? "openrouter" : apiKeys.metaRelayProvider}
+              onValueChange={handleMetaRelayChange}
+            >
               <SelectTrigger className="h-9 border-stroke-subtle bg-bg-soft font-mono text-[12px]">
                 <SelectValue placeholder="Select relay" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
-                <SelectItem value="together">Together AI</SelectItem>
+                <SelectItem value="together" disabled={openRouterRequired}>Together AI</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {openRouterRequired && (
+            <p className="font-mono text-[10px] text-text-muted">{t("settings.api.openRouterRequired")}</p>
+          )}
           <SettingsKeyField
             id="meta-key"
             label="Relay API key"
@@ -165,7 +189,7 @@ export function SettingsApiKeysSection(props: SettingsHandlersProps) {
             onToggleVisible={() => toggleKeyVisibility("metaRelayKey")}
             onChange={(v) => handleKeyChange("metaRelayKey", v)}
             valid={metaValid}
-            helpUrl="https://openrouter.ai/keys"
+            helpUrl={apiKeys.metaRelayProvider === "together" ? "https://api.together.ai/settings/api-keys" : "https://openrouter.ai/keys"}
           />
         </div>
       </SettingsPanel>

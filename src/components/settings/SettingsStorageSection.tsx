@@ -14,8 +14,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { SettingsPanel } from "./SettingsLayout";
 import type { SettingsHandlersProps } from "./settings-props";
+import { isStrongVaultPassword, MIN_VAULT_PASSWORD_LENGTH } from "@/lib/secure-api-keys";
+import { useTranslation } from "react-i18next";
 
 export function SettingsStorageSection(props: SettingsHandlersProps) {
+  const { t } = useTranslation();
   const {
     password,
     setPassword,
@@ -35,6 +38,15 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
     handleLoadFromIndexedDB,
     handleDeleteFromIndexedDB,
   } = props;
+  const resetPasswords = () => {
+    setPassword("");
+    setConfirmPassword("");
+  };
+  const setDialog = (setter: (open: boolean) => void) => (open: boolean) => {
+    resetPasswords();
+    setter(open);
+  };
+  const strongPassword = isStrongVaultPassword(password);
 
   return (
     <div className="space-y-3">
@@ -42,7 +54,7 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2 border border-stroke-subtle p-3">
             <p className="font-mono text-[10px] text-text-muted">Export encrypted JSON for backup or transfer.</p>
-            <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+            <Dialog open={showExportDialog} onOpenChange={setDialog(setShowExportDialog)}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="font-mono text-[11px]">
                   <Download className="mr-2 h-3.5 w-3.5" />
@@ -60,12 +72,15 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                     <Input
                       id="export-password"
                       type="password"
+                      dir="ltr"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter encryption password"
                     />
                   </div>
-                  <Button onClick={handleExport} disabled={!password}>
+                  <p className="text-xs text-text-muted">{t("settings.vault.passwordMinimum", { count: MIN_VAULT_PASSWORD_LENGTH })}</p>
+                  <Button onClick={handleExport} disabled={!strongPassword}>
                     Export Keys
                   </Button>
                 </div>
@@ -74,7 +89,7 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
           </div>
           <div className="space-y-2 border border-stroke-subtle p-3">
             <p className="font-mono text-[10px] text-text-muted">Import from encrypted file.</p>
-            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+            <Dialog open={showImportDialog} onOpenChange={setDialog(setShowImportDialog)}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="font-mono text-[11px]">
                   <Upload className="mr-2 h-3.5 w-3.5" />
@@ -88,25 +103,29 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
+                    <Label htmlFor="import-password">Password</Label>
+                    <Input
+                      id="import-password"
+                      type="password"
+                      dir="ltr"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter decryption password"
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="import-file">Encrypted Key File</Label>
                     <Input
                       id="import-file"
                       type="file"
                       accept=".json.enc,.json"
+                      disabled={!password}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleImport(file);
+                        if (file) void handleImport(file);
+                        e.currentTarget.value = "";
                       }}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="import-password">Password</Label>
-                    <Input
-                      id="import-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter decryption password"
                     />
                   </div>
                 </div>
@@ -122,7 +141,7 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
             Separate from active in-memory keys. Saving replaces the encrypted vault for this device.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+            <Dialog open={showSaveDialog} onOpenChange={setDialog(setShowSaveDialog)}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="font-mono text-[11px]">
                 <Database className="mr-2 h-3.5 w-3.5" />
@@ -140,6 +159,8 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                   <Input
                     id="save-password"
                     type="password"
+                    dir="ltr"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -149,18 +170,21 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                   <Input
                     id="save-confirm"
                     type="password"
+                    dir="ltr"
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                 </div>
-                <Button onClick={handleSaveToIndexedDB} disabled={!password || !confirmPassword}>
+                <p className="text-xs text-text-muted">{t("settings.vault.passwordMinimum", { count: MIN_VAULT_PASSWORD_LENGTH })}</p>
+                <Button onClick={handleSaveToIndexedDB} disabled={!strongPassword || !confirmPassword}>
                   Save Encrypted Vault
                 </Button>
               </div>
             </DialogContent>
             </Dialog>
 
-            <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+            <Dialog open={showLoadDialog} onOpenChange={setDialog(setShowLoadDialog)}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="font-mono text-[11px]">
                 <Database className="mr-2 h-3.5 w-3.5" />
@@ -178,6 +202,8 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
                   <Input
                     id="load-password"
                     type="password"
+                    dir="ltr"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -206,7 +232,7 @@ export function SettingsStorageSection(props: SettingsHandlersProps) {
           <li>· Default: in-memory only (cleared on tab close)</li>
           <li>· Device vault: optional AES-GCM via WebCrypto</li>
           <li>· Export format: encrypted JSON bundle</li>
-          <li>· Completed comparisons are saved to browser IndexedDB</li>
+          <li>· {t("settings.storage.autoSave")}</li>
           <li>· Sessions and preferences remain on this device</li>
         </ul>
         <Alert className="mt-3 border-stroke-subtle">

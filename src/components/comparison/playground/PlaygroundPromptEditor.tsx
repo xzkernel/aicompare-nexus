@@ -6,6 +6,7 @@ import { PromptTemplates } from "@/components/PromptTemplates";
 import { cn } from "@/lib/utils";
 import type { CompareExecutionState } from "@/lib/compare-execution-state";
 import { estimateTokens } from "./types";
+import { MAX_PROMPT_CHARS } from "@/lib/session-import";
 
 type PlaygroundPromptEditorProps = {
   prompt: string;
@@ -63,7 +64,7 @@ export function PlaygroundPromptEditor({
         <div className="flex items-center gap-3">
           <span className="mw-label-mono text-text-muted">{t("playground.promptWorkspace")}</span>
           <span className="font-mono text-[10px] text-text-muted">
-            {t("playground.charTokens", { chars: charCount, tokens })}
+            {t("playground.charTokens", { chars: charCount, max: MAX_PROMPT_CHARS, tokens })}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1">
@@ -85,6 +86,7 @@ export function PlaygroundPromptEditor({
             className="h-7 w-7 p-0 text-text-muted"
             onClick={onClear}
             title={t("playground.clearPrompt")}
+            aria-label={t("playground.clearPrompt")}
           >
             <Eraser className="h-3.5 w-3.5" strokeWidth={1.75} />
           </Button>
@@ -94,7 +96,7 @@ export function PlaygroundPromptEditor({
       <div className="relative">
         <div
           aria-hidden
-          className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 border-r border-stroke-subtle/50 bg-bg-paper/30"
+          className="pointer-events-none absolute inset-y-0 start-0 w-8 border-e border-stroke-subtle/50 bg-bg-paper/30"
         />
         <textarea
           ref={textareaRef}
@@ -102,8 +104,9 @@ export function PlaygroundPromptEditor({
           aria-label="Comparison prompt"
           disabled={isComparing}
           onChange={(e) => onChange(e.target.value)}
+          maxLength={MAX_PROMPT_CHARS}
           className={cn(
-            "min-h-[210px] w-full resize-y bg-transparent py-4 pl-10 pr-4 text-[15px] leading-7",
+            "min-h-[210px] w-full resize-y bg-transparent py-4 pe-4 ps-10 text-[15px] leading-7",
             "text-text-primary placeholder:text-text-muted/60",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cyan/30"
           )}
@@ -168,7 +171,6 @@ export function PlaygroundPromptEditor({
         </div>
       ) : null}
 
-      {/* Security metadata strip — LLM02/LLM06 UX (Phase 12) */}
       <div className="flex items-center gap-4 border-t border-stroke-subtle/50 px-3 py-1.5">
         <div className="flex items-center gap-1 font-mono text-[9px] text-text-muted/60">
           <Lock className="h-2.5 w-2.5" strokeWidth={1.5} />

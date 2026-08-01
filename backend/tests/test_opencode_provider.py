@@ -168,6 +168,121 @@ def test_empty_stream_is_not_reported_as_success():
         asyncio.run(collect())
 
 
+SUCCESS_TERMINALS = [
+    (
+        "opencode-zen",
+        "gpt-5.6-sol",
+        {"type": "response.output_text.delta", "delta": "ok"},
+        {"type": "response.completed"},
+    ),
+    (
+        "opencode-zen",
+        "claude-sonnet-5",
+        {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "ok"}},
+        {"type": "message_stop"},
+    ),
+    (
+        "opencode-zen",
+        "gemini-3.6-flash",
+        {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]},
+        {"candidates": [{"finishReason": "STOP"}]},
+    ),
+    (
+        "opencode-go",
+        "grok-4.5",
+        {"choices": [{"delta": {"content": "ok"}}]},
+        {"choices": [{"delta": {}, "finish_reason": "stop"}]},
+    ),
+]
+
+
+@pytest.mark.parametrize("provider,model,text_event,terminal_event", SUCCESS_TERMINALS)
+def test_explicit_protocol_terminal_is_success_without_done_marker(
+    provider, model, text_event, terminal_event
+):
+    def handler(_request: httpx.Request) -> httpx.Response:
+        body = "".join(
+            f"data: {json.dumps(event)}\n\n" for event in (text_event, terminal_event)
+        )
+        return httpx.Response(200, text=body)
+
+    adapter = OpenCodeProvider(
+        "unit-test-key", model, provider, transport=httpx.MockTransport(handler)
+    )
+
+    async def collect():
+        return [event async for event in adapter.stream_events("hello")]
+
+    assert [event.text for event in asyncio.run(collect())] == ["ok"]
+
+
+@pytest.mark.parametrize("provider,model,text_event,_terminal", SUCCESS_TERMINALS)
+def test_partial_text_without_protocol_terminal_fails(provider, model, text_event, _terminal):
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=f"data: {json.dumps(text_event)}\n\n")
+
+    adapter = OpenCodeProvider(
+        "unit-test-key", model, provider, transport=httpx.MockTransport(handler)
+    )
+
+    async def collect():
+        return [event async for event in adapter.stream_events("hello")]
+
+    with pytest.raises(Exception, match="terminated unexpectedly"):
+        asyncio.run(collect())
+
+
+def test_gemini_unspecified_finish_reason_is_not_success():
+    events = (
+        {"candidates": [{"content": {"parts": [{"text": "partial"}]}}]},
+        {"candidates": [{"finishReason": "FINISH_REASON_UNSPECIFIED"}]},
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, text="".join(f"data: {json.dumps(event)}\n\n" for event in events)
+        )
+
+    adapter = OpenCodeProvider(
+        "unit-test-key",
+        "gemini-3.6-flash",
+        "opencode-zen",
+        transport=httpx.MockTransport(handler),
+    )
+
+    async def collect():
+        return [event async for event in adapter.stream_events("hello")]
+
+    with pytest.raises(Exception, match="did not complete successfully"):
+        asyncio.run(collect())
+
+
+def test_messages_refusal_terminal_is_not_success():
+    events = (
+        {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "partial"}},
+        {"type": "message_delta", "delta": {"stop_reason": "refusal"}},
+        {"type": "message_stop"},
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, text="".join(f"data: {json.dumps(event)}\n\n" for event in events)
+        )
+
+    adapter = OpenCodeProvider(
+        "unit-test-key",
+        "claude-sonnet-5",
+        "opencode-zen",
+        transport=httpx.MockTransport(handler),
+    )
+
+    async def collect():
+        return [event async for event in adapter.stream_events("hello")]
+
+    with pytest.raises(Exception, match="content filtering"):
+        asyncio.run(collect())
+
+
 def test_chat_finish_failures_are_reported():
     def handler(request: httpx.Request) -> httpx.Response:
         event = {"choices": [{"delta": {}, "finish_reason": "length"}]}

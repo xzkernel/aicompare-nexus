@@ -155,13 +155,13 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: var(--page-bg); /* Using true dark theme page background */
     color: var(--body-color); /* Using true dark theme body text color */
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--heading-color); /* Using true dark theme heading color */
   }
 }
@@ -217,7 +217,7 @@
   }
 
   .mw-label-mono {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 0.2em;
@@ -294,7 +294,7 @@
 }
 
 .prose blockquote {
-  border-left-color: var(--color-accent-primary);
+  border-inline-start-color: var(--color-accent-primary);
   color: var(--color-text-secondary);
 }
 
@@ -314,9 +314,7 @@
   border: 1px solid var(--stroke-subtle) !important;
 }
 
-/* ── App shell: Stitch composition system ── */
-
-/* Perspective grid texture — Stitch dashboard/playground background */
+/* App shell background */
 .perspective-grid {
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
@@ -324,15 +322,12 @@
   background-size: 40px 40px;
 }
 
-/* ── Landing: Stitch composition system (structural port) ── */
-
 .landing-page {
   background-color: #080808;
   color: #e2e2e2;
   overflow-x: hidden;
 }
 
-/* Fixed grain — opacity 0.02 matching Stitch source */
 .landing-grain {
   pointer-events: none;
   position: fixed;
@@ -342,7 +337,6 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Hero: 24px dot grid (Stitch: background-size: 24px 24px) */
 .landing-dot-grid {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 24px 24px;
@@ -358,14 +352,12 @@
   background: radial-gradient(600px circle at 50% 50%, rgba(255, 255, 255, 0.015), transparent 70%);
 }
 
-/* Ghost typography — inside h1, Stitch values */
 .landing-hero-ghost {
   -webkit-text-stroke: 1px rgba(255, 255, 255, 0.05);
   color: transparent;
   user-select: none;
 }
 
-/* Instrument Serif display — Stitch exact values */
 .landing-serif-display {
   font-family: "Instrument Serif", Georgia, serif;
   letter-spacing: -0.04em;
@@ -382,7 +374,6 @@
   transform: perspective(1200px) rotateX(5deg);
 }
 
-/* Structural 1px border — Stitch terminal-border */
 .terminal-border {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -412,4 +403,20 @@
 
 [dir="rtl"] .group:hover .group-hover\:translate-x-1 {
   --tw-translate-x: -0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .perspective-mockup,
+  .perspective-mockup:hover {
+    transform: none;
+  }
 }

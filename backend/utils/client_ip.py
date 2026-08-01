@@ -18,8 +18,8 @@ from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
-# Private/docker ranges — safe defaults for self-host behind nginx or compose.
-_DEFAULT_TRUSTED = "127.0.0.1,::1,172.16.0.0/12,192.168.0.0/16,10.0.0.0/8"
+# Trust local development proxies by default. Deployment proxies must be explicit.
+_DEFAULT_TRUSTED = "127.0.0.1,::1"
 
 
 @lru_cache(maxsize=1)
@@ -57,11 +57,29 @@ def get_client_ip(request: Request) -> str:
     direct = request.client.host if request.client else None
 
     if direct and _is_trusted_proxy(direct):
-        forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-        if forwarded:
-            return forwarded
+        raw_forwarded = request.headers.get("x-forwarded-for", "")
+        if raw_forwarded:
+            try:
+                forwarded = [
+                    str(ipaddress.ip_address(part.strip()))
+                    for part in raw_forwarded.split(",")
+                    if part.strip()
+                ]
+            except ValueError:
+                logger.warning("Ignoring malformed X-Forwarded-For chain")
+                return direct
+            if not forwarded:
+                return direct
+            # Walk toward the client, discarding only explicitly trusted hops.
+            for host in reversed(forwarded):
+                if not _is_trusted_proxy(host):
+                    return host
+            return forwarded[0]
         real_ip = request.headers.get("x-real-ip", "").strip()
         if real_ip:
-            return real_ip
+            try:
+                return str(ipaddress.ip_address(real_ip))
+            except ValueError:
+                logger.warning("Ignoring malformed X-Real-IP header")
 
     return direct or "unknown"

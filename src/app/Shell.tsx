@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { config } from "@/config/app";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ByokInfrastructurePanel } from "@/components/shell/ByokInfrastructurePanel";
 import { RegistryBootstrap } from "@/components/RegistryBootstrap";
 import { BackendStatusBanner } from "@/components/BackendStatusBanner";
@@ -46,15 +46,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
               ModelWise
             </h1>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-white/40">
-              V{config.APP_VERSION} Frontier
+              V{config.APP_VERSION} Pre-release
             </p>
           </div>
         </div>
 
         <nav className="space-y-1">
-          {NAV_ITEMS.map((item) =>
-            item.path ? (
-              <Link
+          {NAV_ITEMS.map((item) => (
+            <Link
                 key={item.key}
                 to={item.path}
                 onClick={isMobile ? () => setMobileOpen(false) : undefined}
@@ -69,16 +68,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 {t(`nav.${item.key}`)}
-              </Link>
-            ) : (
-              <span
-                key={item.key}
-                className="flex items-center gap-3 px-3 py-2 font-mono text-xs tracking-tight text-white/20"
-              >
-                {t(`nav.${item.key}`)}
-              </span>
-            )
-          )}
+            </Link>
+          ))}
         </nav>
 
       </div>
@@ -87,7 +78,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <div className="mt-auto border-t border-white/[0.06] p-[24px]">
         <a
-          href="https://github.com/Archiixyz/aicompare-nexus"
+          href="https://github.com/xzkernel/aicompare-nexus"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-3 py-2 font-mono text-xs text-white/40 transition-colors hover:text-white"
@@ -95,7 +86,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {t("nav.docs")}
         </a>
         <a
-          href="https://github.com/Archiixyz/aicompare-nexus/issues"
+          href="https://github.com/xzkernel/aicompare-nexus/issues"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-3 py-2 font-mono text-xs text-white/40 transition-colors hover:text-white"
@@ -124,6 +115,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             side="left"
             className="w-64 border-white/[0.06] bg-[#0e0e0e] p-0"
           >
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SheetDescription className="sr-only">Main application navigation</SheetDescription>
             <div className="flex h-full flex-col">{sidebarContent}</div>
           </SheetContent>
         </Sheet>

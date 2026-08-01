@@ -2,9 +2,7 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+ModelWise has not published a tagged release. Security fixes are applied to the default branch on a best-effort basis; no numbered version currently receives a separate support commitment.
 
 ## Reporting a Vulnerability
 
@@ -14,10 +12,7 @@ Optional password-protected vault and export features encrypt keys in the browse
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, report them via:
-
-- Email: **security@modelwise.ai** (preferred)
-- GitHub Security Advisory: [Private vulnerability reporting](https://github.com/Archiixyz/aicompare-nexus/security/advisories/new)
+Use GitHub's [private vulnerability reporting](https://github.com/xzkernel/aicompare-nexus/security/advisories/new) to send the maintainers a private report.
 
 ### What to include
 
@@ -26,17 +21,11 @@ Instead, report them via:
 - Impact and potential exploit scenario
 - Suggested fix (if available)
 
-### Response timeline
-
-- Initial acknowledgment: **within 48 hours**
-- Status update: **within 5 business days**
-- Resolution or mitigation: **within 30 days** (depending on severity)
-
 ### Disclosure policy
 
-- We follow coordinated disclosure
-- Credit will be given in the changelog and advisory
-- We request a 90-day embargo before public disclosure
+- Allow the maintainers time to investigate and prepare a fix before public disclosure.
+- Coordinate disclosure timing through the private report.
+- State whether you want public credit; credit is subject to mutual agreement.
 
 ## Scope
 

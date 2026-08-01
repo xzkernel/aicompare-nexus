@@ -4,6 +4,8 @@ import "./index.css";
 import "@/i18n";
 import { initLocalDatabase } from "@/lib/idb/db";
 
-void initLocalDatabase();
+void initLocalDatabase().catch(() => {
+  // The app remains usable with in-memory credentials if browser storage is unavailable.
+});
 
 createRoot(document.getElementById("root")!).render(<App />);

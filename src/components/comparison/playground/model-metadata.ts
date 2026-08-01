@@ -1,8 +1,12 @@
 import { getCachedRegistry } from "@/lib/model-registry/client";
-import { getProviderLabel, getRelayLabel } from "@/lib/model-registry/helpers";
+import { getProviderLabel } from "@/lib/model-registry/helpers";
 import { parseModelValue } from "@/lib/model-registry/normalize";
-import { PROVIDER_CONFIG, type ProviderId } from "@/config/providers";
-import type { ApiKeys } from "@/lib/secure-api-keys";
+import { PROVIDER_CONFIG } from "@/config/providers";
+import {
+  hasValidCustomBaseUrl,
+  isValidProviderApiKey,
+  type ApiKeys,
+} from "@/lib/secure-api-keys";
 
 export type ModelMeta = {
   contextWindow: string;
@@ -39,14 +43,20 @@ export function getModelMeta(modelString: string): ModelMeta {
 }
 
 export function getRoutingLabel(providerId: string, apiKeys: ApiKeys): string {
-  const relay = getRelayLabel(providerId);
+  if (providerId === "google" && apiKeys.googleProvider === "openrouter") {
+    return isValidProviderApiKey(apiKeys.metaRelayKey, "meta") ? "OpenRouter" : "no routes";
+  }
+  if (providerId === "anthropic" && apiKeys.claudeProvider === "openrouter") {
+    return isValidProviderApiKey(apiKeys.metaRelayKey, "meta") ? "OpenRouter" : "no routes";
+  }
+
   const hasDirect =
-    (providerId === "openai" && !!apiKeys.openaiKey) ||
-    (providerId === "google" && !!apiKeys.googleKey) ||
-    (providerId === "anthropic" && !!apiKeys.anthropicKey) ||
-    ((providerId === "opencode-go" || providerId === "opencode-zen") && apiKeys.opencodeKey.trim().length > 5) ||
-    (providerId === "meta" && !!apiKeys.metaRelayKey) ||
-    (providerId === "custom" && !!apiKeys.customApiKey);
+    (providerId === "openai" && isValidProviderApiKey(apiKeys.openaiKey, "openai")) ||
+    (providerId === "google" && isValidProviderApiKey(apiKeys.googleKey, "google")) ||
+    (providerId === "anthropic" && isValidProviderApiKey(apiKeys.anthropicKey, "anthropic")) ||
+    ((providerId === "opencode-go" || providerId === "opencode-zen") && isValidProviderApiKey(apiKeys.opencodeKey, providerId)) ||
+    (providerId === "meta" && isValidProviderApiKey(apiKeys.metaRelayKey, "meta")) ||
+    (providerId === "custom" && isValidProviderApiKey(apiKeys.customApiKey, "custom") && hasValidCustomBaseUrl(apiKeys.customApiConfig?.baseUrl));
 
   if (providerId === "meta") {
     const relayId = apiKeys.metaRelayProvider || "openrouter";
@@ -59,7 +69,6 @@ export function getRoutingLabel(providerId: string, apiKeys: ApiKeys): string {
   }
 
   if (hasDirect) return "Direct";
-  if (relay && apiKeys.metaRelayKey) return relay;
   return "no routes";
 }
 

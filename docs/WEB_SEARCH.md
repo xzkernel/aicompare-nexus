@@ -1,119 +1,96 @@
-# Phase 10 — Web Search / Grounded Retrieval
+# Web Search and Grounding
 
-Provider-native live search only. No custom RAG, crawlers, or hosted retrieval.
+ModelWise can request provider-native web search on selected routes. It does not run a crawler, retrieval index, or custom RAG service. Search requests, results, and billing remain subject to the selected provider and account.
 
-## Provider support matrix (Phase 10A)
+## Request contract
 
-| Provider | Search support | Streaming compatible | Citation support | Requires special model |
-| -------- | -------------- | -------------------- | ---------------- | ---------------------- |
-| **Google (direct)** | `google_search` grounding tool | Yes — `streamGenerateContent` + tools | `groundingMetadata.groundingChunks` (title, uri) | Gemini 2.0+ / 2.5+ / 3.x family |
-| **Anthropic (direct)** | `web_search_20250305` tool (GA) | Yes — SSE with tool + citation deltas | `web_search_result_location` (url, title, cited_text) | Claude 3.5+, Sonnet 4, Opus 4+ |
-| **OpenRouter (meta relay)** | `openrouter:web_search` server tool | Yes — tool-calling models stream after server-side search | Annotations / plugin metadata (best-effort normalize) | Model must support tool calling |
-| **OpenAI (direct BYOK)** | **Not enabled** — Chat Completions has no native web search in this integration | N/A | N/A | Responses API browsing is separate; not wired |
-| **Custom HTTP** | Unknown — no search unless endpoint supports tools | Varies | Varies | User-defined |
+Both `POST /api/v1/stream` and `POST /api/v1/ask` accept an optional `searchMode` field:
 
-### Cost & failure modes
-
-| Provider | Billing notes | Common failures |
-| -------- | ------------- | --------------- |
-| Google | Per search query executed (~$14/1k on paid tier) | `API_KEY_INVALID`, quota, model without grounding |
-| Anthropic | ~$10/1k searches + tokens | Tool not enabled for model, rate limits |
-| OpenRouter | Per engine (native/exa/parallel) + model tokens | Model without tool support, 401 relay key |
-| OpenAI | N/A (disabled) | Toggle blocked in UI |
-
-### Streaming + grounding
-
-All three enabled providers support streaming with search. Search phases emit dedicated SSE events before/during token stream (`search_start`, `search_sources`, `grounding`, `citations`, `search_complete`).
-
-## Architecture
-
-```
-Playground policy → StreamRequest { searchMode }
-    → stream_service._stream_side(search_opts)
-    → provider.stream_events(prompt, search_opts)
-    → normalize.py → unified SearchMetadata
-    → SSE → compare-stream.ts → UI (GroundedBadge, CitationsPanel)
-```
-
-## Normalized citation format
-
-See `backend/services/search/normalize.py` — mirrored in `src/lib/search-metadata.ts`.
-
-## Configuration
-
-- **auto** — enable native search on supported routes; model decides when to query
-- **force** — require search (system hint + tool enabled where supported)
-- **off** — plain chat, backward compatible
-
-Defaults persist in `localStorage` (`modelwise-search-prefs`); never synced to cloud.
-
----
-
-## Phase 10 implementation report
-
-### 1. Provider support matrix
-See table at top of this document.
-
-### 2. Grounding architecture
-- Request: `searchMode` on `StreamRequest` / `AskRequest` (`auto` | `force` | `off`)
-- Resolution: `ResolvedSearchOptions.from_request()` in `backend/schemas/search.py`
-- Providers yield `ProviderStreamEvent` (`token`, `search_*`) via `stream_events()`
-- Normalization: `backend/services/search/normalize.py` → unified `SearchMetadata`
-- UI consumes via `compare-stream.ts` SSE parser
-
-### 3. Streaming event additions
-| Event | Payload |
-|-------|---------|
-| `search_start` | side, provider, mode, liveSearch |
-| `search_sources` | side, queries[], provider |
-| `grounding` | side, provider, phase |
-| `citations` | side, metadata (normalized) |
-| `search_complete` | side, metadata \| skipped + reason |
-
-Existing `start`, `token`, `done`, `error`, `complete` unchanged.
-
-### 4. Citation normalization format
 ```json
 {
-  "grounded": true,
-  "citations": [{ "title", "url", "hostname", "provider", "snippet?" }],
-  "searchLatencyMs": 2400,
-  "searchProvider": "google",
-  "searchQueries": ["weather agadir"],
-  "searchMode": "auto",
-  "liveSearch": true
+  "prompt": "What changed in this week's release?",
+  "leftModel": "gemini-3.5-flash",
+  "rightModel": "claude-sonnet-4-6",
+  "leftProvider": "google",
+  "rightProvider": "anthropic",
+  "searchMode": "auto"
 }
 ```
 
-### 5. Supported models
-- **Google direct:** Gemini 2.5 Pro/Flash (grounding tool)
-- **Anthropic direct:** Claude Sonnet 4, Opus 4 (web_search tool)
-- **OpenRouter relay:** any tool-calling model via `openrouter:web_search`
+| Mode | Behavior |
+|------|----------|
+| `off` | Do not enable provider-native search. This is also the default when the field is omitted. |
+| `auto` | Enable the route's search tool and allow the provider to decide whether to use it. |
+| `force` | Enable search and add a provider-specific instruction requiring its use. Provider behavior can still depend on model and account capabilities. |
 
-### 6. Unsupported provider behavior
-- **OpenAI direct:** search skipped with explicit reason; plain chat continues
-- **Custom HTTP:** skipped (not in allowlist)
-- UI shows hints when one/both routes lack search support
+The Playground stores the selected mode in browser `localStorage` under `modelwise-search-prefs`. It is not sent to a cloud-sync service.
 
-### 7. Performance impact
-- Search adds provider-side latency (often 2–20s+) before/during token stream
-- Search latency tracked in `searchLatencyMs` per panel
-- Search uses the same browser → ModelWise backend → provider request path as standard comparisons
+## Route support
 
-### 8. Files modified / created
-**Created:** `docs/WEB_SEARCH.md`, `backend/schemas/search.py`, `backend/providers/stream_events.py`, `backend/services/search/*`, `src/lib/search-metadata.ts`, `src/lib/search-prefs.ts`, `src/lib/search-capabilities.ts`, `src/hooks/use-grounding.ts`, `GroundedBadge.tsx`, `CitationsPanel.tsx`, `PlaygroundWebSearchControls.tsx`
+Support is based on the resolved route, which can differ from the model's catalog provider when relay fallback is used.
 
-**Modified:** provider adapters, `stream_service.py`, `compare_service.py`, stream/compare schemas, `compare-stream.ts`, `PromptPlayground.tsx`, `PlaygroundWorkbench.tsx`, `PlaygroundToolbar.tsx`, `ComparisonOutputPanel.tsx`, `LiveResponseDiff.tsx`, registry types/catalog, `SettingsApiKeysSection.tsx`
+| Resolved route | Integration | Search metadata |
+|----------------|-------------|-----------------|
+| Google | Gemini `google_search` grounding tool | Queries and grounding chunks when returned by Gemini |
+| Anthropic | Claude `web_search_20250305` tool | Queries and citations when returned by Anthropic |
+| OpenRouter (`meta`) | OpenRouter `web` plugin | Queries and annotations when returned by OpenRouter/model |
+| OpenAI | Not enabled | Search is skipped |
+| OpenCode Go / Zen | Not enabled | Search is skipped |
+| Custom HTTP | Not enabled | Search is skipped even if the custom endpoint has its own tool API |
 
-### 9. Remaining limitations
-- OpenAI native web search not wired (Chat Completions BYOK)
-- OpenRouter citations depend on model/tool-call support — metadata best-effort
-- Per-side search overrides deferred (v1 global only)
-- Session persistence does not yet store citations in IndexedDB
-- `:online` slug deprecated by OpenRouter — using server tool instead
+Route support does not guarantee that a search runs or that citations are returned. Model availability, tool support, account permissions, quotas, and provider behavior can vary.
 
-### 10. Known provider inconsistencies
-- Gemini may ground without obvious queries in stream metadata on some models
-- Claude may refuse search on certain account tiers
-- OpenRouter search engine varies (native vs Exa) by model route
-- Grounded badge vs actual factual accuracy — citations indicate search ran, not truth
+## Streaming events
+
+Search events supplement the base SSE contract in [STREAMING.md](./STREAMING.md).
+
+| Event | Payload fields |
+|-------|----------------|
+| `start` | `side`, `model`, `provider`, `searchCapability` |
+| `search_start` | `side`, `provider`, `mode` |
+| `search_sources` | `side`, `queries`, `provider` |
+| `grounding` | `side`, plus provider-specific `provider`, `phase`, or `label` fields when available |
+| `citations` | `side`, `metadata` |
+| `search_complete` | `side`, then either `metadata` or `skipped` and `reason` |
+| `done` | Base fields plus optional `searchMetadata` |
+
+Events are emitted independently for the left and right sides. An unsupported route emits `search_complete` with a skip reason and continues with a normal model response.
+
+## Normalized metadata
+
+Citation-bearing events and `done.searchMetadata` use this shape:
+
+```json
+{
+  "grounded": true,
+  "citations": [
+    {
+      "title": "Source title",
+      "url": "https://example.com/article",
+      "hostname": "example.com",
+      "provider": "google",
+      "snippet": "Optional provider text"
+    }
+  ],
+  "searchLatencyMs": 2400,
+  "searchProvider": "google",
+  "searchQueries": ["example query"],
+  "searchMode": "auto",
+  "liveSearch": true,
+  "used": true
+}
+```
+
+Fields based on provider output can be absent or empty. `grounded`, `liveSearch`, and `used` report observed metadata; they do not verify factual accuracy, source quality, or completeness.
+
+## Non-streaming behavior
+
+`POST /api/v1/ask` passes `searchMode` to provider adapters, but its response schema contains response text and timing only. Use the streaming endpoint when the client needs normalized citation and search-status events.
+
+## Data and cost boundaries
+
+- Search uses the same browser-to-backend-to-provider path as other comparisons.
+- The provider receives the prompt, credentials, model settings, and search request.
+- Search queries, source URLs, snippets, and response text can transit the ModelWise backend.
+- Provider-specific search and token charges may apply. Check the provider's current pricing and terms rather than relying on fixed prices in this repository.
+- Citations indicate provider-returned sources, not independent verification by ModelWise.

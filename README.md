@@ -1,10 +1,10 @@
 # ModelWise
 
-**Open-source real-time frontier AI evaluation workbench.**
+**Open-source workbench for comparing AI model responses.**
 
 Compare two text-model routes side-by-side with SSE streaming, divergence analysis, and BYOK provider routing through a configurable ModelWise backend.
 
-**Live demo:** [aicompare-nexus.vercel.app](https://aicompare-nexus.vercel.app) · **Repository:** [github.com/Archiixyz/aicompare-nexus](https://github.com/Archiixyz/aicompare-nexus)
+**Live demo:** [aicompare-nexus.vercel.app](https://aicompare-nexus.vercel.app) · **Repository:** [github.com/xzkernel/aicompare-nexus](https://github.com/xzkernel/aicompare-nexus)
 
 ![ModelWise playground — streaming compare](./docs/screenshots/playground.png)
 
@@ -14,8 +14,8 @@ Compare two text-model routes side-by-side with SSE streaming, divergence analys
 
 - **API keys are memory-only by default** and transit the configured ModelWise backend in request headers. The backend does not intentionally persist them.
 - **Encrypted persistence is explicit** through a password-protected IndexedDB device vault or encrypted export.
-- **Completed comparisons are saved locally** in browser IndexedDB and never cloud-synced.
-- **No account system** — the shipped app is local-only.
+- **Comparison history and preferences are stored locally** in browser storage; the application has no account or cloud-sync service.
+- **Inference is remote** unless your selected provider is self-hosted: prompts, request parameters, credentials, and responses pass through the configured backend and provider.
 - Details: [docs/PRIVACY.md](./docs/PRIVACY.md)
 
 ---
@@ -87,20 +87,20 @@ Details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [docs/STREAMING.md](.
 
 ### Prerequisites
 
-- **Node.js** 18+
-- **Python** 3.10+
+- **Node.js** 22.13+
+- **Python** 3.11
 - At least one provider API key (optional to browse UI; required to compare)
 
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/Archiixyz/aicompare-nexus.git
+git clone https://github.com/xzkernel/aicompare-nexus.git
 cd aicompare-nexus
 
-npm install
+npm ci
 
 cd backend
-pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 cd ..
 ```
 
@@ -169,9 +169,9 @@ For production (Vercel + Railway split deploy), set:
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Public Railway backend URL (no trailing slash) |
+| `VITE_API_URL` | Absolute backend origin for split deployments; embedded into the frontend at build time. Leave empty for the Vite/nginx same-origin proxies. |
 
-See [DEPLOY.md](./DEPLOY.md) and [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
+The frontend host's Content Security Policy must allow the selected API origin in `connect-src`. See [DEPLOY.md](./DEPLOY.md) and [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
 
 ---
 
@@ -181,8 +181,8 @@ ModelWise streams both model responses over a single SSE connection.
 
 ```http
 POST /api/v1/stream
-X-OpenAI-API-Key: sk-...
-X-Google-API-Key: AIza...
+X-OpenAI-API-Key: <provider-api-key>
+X-Google-API-Key: <provider-api-key>
 
 {"prompt":"...","leftModel":"gpt-5.5","rightModel":"gemini-3.5-flash"}
 ```
@@ -219,7 +219,7 @@ docker compose up --build
 
 Frontend: http://localhost:8080 · Backend: http://localhost:8001
 
-See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md) and [DOCKER.md](./DOCKER.md).
+The development Compose file exposes plain HTTP on ports 8080 and 8001. The production file binds the frontend to loopback, keeps the backend internal, and expects an external TLS terminator. See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
 
 ---
 
@@ -231,35 +231,30 @@ Sessions, preferences, and encrypted key vaults remain in the current browser. U
 |-----|-------|
 | [DEPLOY.md](./DEPLOY.md) | Vercel + Railway production deploy |
 | [PRIVACY.md](./docs/PRIVACY.md) | BYOK and local data |
-| [CLOUD_SYNC.md](./docs/CLOUD_SYNC.md) | Local-only release status |
+| [CLOUD_SYNC.md](./docs/CLOUD_SYNC.md) | Local data and the absence of cloud sync |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
 | [STREAMING.md](./docs/STREAMING.md) | SSE contract |
 | [REGISTRY.md](./docs/REGISTRY.md) | Model catalog |
 | [PROVIDERS.md](./docs/PROVIDERS.md) | BYOK & routing |
+| [WEB_SEARCH.md](./docs/WEB_SEARCH.md) | Provider-native web search contract |
 | [SELF_HOSTING.md](./docs/SELF_HOSTING.md) | Deploy guide |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Dev & PR guide |
 
 ---
 
-## Roadmap
+## Maintainers
 
-Realistic next steps (not committed):
-
-- Live provider health probes
-- Registry `lastVerified` timestamps
-- Cost estimates from registry pricing metadata
-- Dedicated benchmarks workspace
-
-Out of scope: hosted inference, billing, teams, agents.
+- [@xzkernel](https://github.com/xzkernel)
+- [@vibekernel22](https://github.com/vibekernel22)
 
 ---
 
 ## Philosophy
 
 - **Local-first** — active keys default to memory; encrypted key persistence and IndexedDB session auto-save are explicit browser features
-- **BYOK** — you pay providers directly; ModelWise adds no inference markup
+- **BYOK** — provider access uses credentials supplied by the user
 - **Routing, not inference** — the ModelWise backend forwards prompts and keys to configured external providers
-- **No intentional backend key persistence** — provider keys are handled per request and are never cloud-synced
+- **No intentional backend key persistence** — provider keys are handled per request; browser persistence is opt-in and encrypted
 - **Focused tool** — evaluation workbench, not an agent platform or SaaS
 
 ---

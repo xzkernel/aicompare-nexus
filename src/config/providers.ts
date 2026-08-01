@@ -170,32 +170,5 @@ export const PROVIDER_CONFIG: Record<ProviderId, ProviderConfig> = {
   },
 };
 
-/** @deprecated Use PROVIDER_CONFIG — kept for gradual migration */
-export const PROVIDERS = PROVIDER_CONFIG;
-
-export type ProviderDef = ProviderConfig;
-
-export const getProvider = (id: ProviderId): ProviderConfig => PROVIDER_CONFIG[id];
-
-export const getAllProviders = (): ProviderConfig[] => Object.values(PROVIDER_CONFIG);
-
-export const getActiveProviders = (): ProviderConfig[] =>
-  Object.values(PROVIDER_CONFIG).filter((p) => p.status === "active");
-
-export const validateApiKey = (providerId: ProviderId, apiKey: string): boolean => {
-  const provider = PROVIDER_CONFIG[providerId];
-  if (!provider?.apiKeyFormat) return false;
-  return provider.apiKeyFormat.validation.test(apiKey.trim());
-};
-
-export const getApiKeyExample = (providerId: ProviderId): string =>
-  PROVIDER_CONFIG[providerId]?.apiKeyFormat?.example || "your-api-key";
-
 export const getProviderDisplayName = (id: ProviderId): string =>
   PROVIDER_CONFIG[id]?.label || id;
-
-export const getProviderLogo = (id: ProviderId): string =>
-  PROVIDER_CONFIG[id]?.logo || "/logos/api.svg";
-
-export const getProviderColor = (id: ProviderId): string =>
-  PROVIDER_CONFIG[id]?.color || "from-[#6B7280] to-[#9CA3AF]";

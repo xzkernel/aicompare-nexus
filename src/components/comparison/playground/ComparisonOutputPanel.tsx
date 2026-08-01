@@ -213,7 +213,7 @@ export function ComparisonOutputPanel({
 
           {state === "success" && onCopy && (
 
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onCopy} title="Copy">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onCopy} title="Copy" aria-label="Copy response">
 
               <Copy className="h-3 w-3" strokeWidth={1.75} />
 
@@ -223,7 +223,7 @@ export function ComparisonOutputPanel({
 
           {state === "success" && text && (
 
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={exportResponse} title="Export">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={exportResponse} title="Export" aria-label="Export response">
 
               <Download className="h-3 w-3" strokeWidth={1.75} />
 
@@ -386,13 +386,15 @@ function DiffHighlightedContent({
 
 }) {
 
+  if (useMarkdown && !segments?.length) {
+
+    return <LazyMarkdownRenderer content={fallback} fontSize="small" />;
+
+  }
+
   if (!segments?.length) {
 
-    return useMarkdown ? (
-
-      <LazyMarkdownRenderer content={fallback} fontSize="small" />
-
-    ) : (
+    return (
 
       <div className="whitespace-pre-wrap text-[14px] leading-7 text-text-primary">
 
@@ -414,7 +416,7 @@ function DiffHighlightedContent({
 
       {segments.map((seg, i) => (
 
-        <p
+        <div
 
           key={i}
 
@@ -428,13 +430,17 @@ function DiffHighlightedContent({
 
         >
 
-          {seg.text}
+          {useMarkdown ? (
+            <LazyMarkdownRenderer content={seg.text} fontSize="small" />
+          ) : (
+            seg.text
+          )}
 
-        </p>
+        </div>
 
       ))}
 
-      <StreamCursor />
+      {!useMarkdown && <StreamCursor />}
 
     </div>
 

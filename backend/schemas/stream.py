@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, StringConstraints
 
 from schemas.search import SearchMode
 
@@ -8,13 +8,20 @@ from schemas.search import SearchMode
 # A typical long-form evaluation prompt is well under 32 KB.
 _MAX_PROMPT = 32_000
 _MAX_MODEL_ID = 128
-_MAX_PROVIDER_ID = 64
+ProviderId = Annotated[
+    Literal["openai", "google", "anthropic", "opencode-go", "opencode-zen", "meta", "custom"],
+    BeforeValidator(lambda value: value.strip() if isinstance(value, str) else value),
+]
+Prompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=_MAX_PROMPT)]
+ModelId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=_MAX_MODEL_ID)]
 
 
 class StreamRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=_MAX_PROMPT)
-    leftModel: str = Field(..., min_length=1, max_length=_MAX_MODEL_ID)
-    rightModel: str = Field(..., min_length=1, max_length=_MAX_MODEL_ID)
-    leftProvider: Optional[str] = Field(default=None, max_length=_MAX_PROVIDER_ID)
-    rightProvider: Optional[str] = Field(default=None, max_length=_MAX_PROVIDER_ID)
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: Prompt
+    leftModel: ModelId
+    rightModel: ModelId
+    leftProvider: Optional[ProviderId] = None
+    rightProvider: Optional[ProviderId] = None
     searchMode: Optional[SearchMode] = None

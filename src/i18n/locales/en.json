@@ -31,9 +31,24 @@
     "controlCenter": "Control Center",
     "subtitle": "Local infrastructure management",
     "routesConfigured": "{{count}} route configured",
-    "routesConfigured_plural": "{{count}} routes configured",
+    "routesConfigured_other": "{{count}} routes configured",
     "keyPresent": "KEY PRESENT",
     "keysRequired": "KEYS REQUIRED",
+    "sectionsLabel": "Settings sections",
+    "api": {
+      "routeConfigured": "At least one route is configured for playground requests.",
+      "noRoutes": "No API key route is configured. Add credentials below to enable model evaluation.",
+      "googleOpenRouter": "Gemini routes through OpenRouter using the relay key below.",
+      "claudeOpenRouter": "Claude routes through OpenRouter using the relay key below.",
+      "openRouterRequired": "OpenRouter is required while Gemini or Claude uses its OpenRouter routing preference."
+    },
+    "vault": {
+      "strongerPassword": "Stronger password required",
+      "passwordMinimum": "Use at least {{count}} characters."
+    },
+    "storage": {
+      "autoSave": "Completed comparisons are automatically saved to browser IndexedDB"
+    },
     "sections": {
       "providers": { "label": "Providers", "description": "Configuration overview" },
       "api-keys": { "label": "API Keys", "description": "Credentials & routing" },
@@ -42,9 +57,24 @@
       "security": { "label": "Security", "description": "Privacy & isolation" }
     }
   },
+  "sessions": {
+    "importSuccess": "Import complete",
+    "importResult": "Imported {{imported}} session(s); skipped {{skipped}} to preserve existing history.",
+    "importFailed": "Import failed",
+    "importFailedDescription": "The backup could not be imported. Check its format.",
+    "fileTooLarge": "The import file exceeds the 5 MB limit.",
+    "noValidSessions": "No valid sessions were found.",
+    "rowLimit": "An import can contain at most {{count}} sessions."
+  },
+  "markdown": {
+    "codeCopied": "Code copied",
+    "copyFailed": "Copy failed",
+    "copyCode": "Copy code",
+    "remoteImageBlocked": "Remote image blocked"
+  },
   "playground": {
     "promptWorkspace": "Prompt workspace",
-    "charTokens": "{{chars}}/4000 · ~{{tokens}} tokens",
+    "charTokens": "{{chars}}/{{max}} · ~{{tokens}} tokens",
     "clearPrompt": "Clear prompt",
     "cancel": "Cancel",
     "runComparison": "Run comparison",
@@ -84,6 +114,7 @@
     "blocking": {
       "inProgress": "Comparison in progress",
       "enterPrompt": "Enter a prompt to compare",
+      "promptTooLong": "Prompt must be 32,000 characters or fewer",
       "selectModelA": "Select a model for side A",
       "selectModelB": "Select a model for side B",
       "addKeys": "Add API keys for at least one selected model in Settings"

@@ -8,12 +8,43 @@ yarn-error.log*
 dist
 build
 
-# Environment files
+# Environment files (examples stay available to operators)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+**/.env
+**/.env.*
+env.env
+**/env.env
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+
+# Credentials, private keys, and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+credentials
+credentials.*
+**/credentials
+**/credentials.*
+*-credentials.json
+*.credentials.json
+service-account*.json
+keys
+certs
+certificates
+secrets
+.secrets
+!*.example
+!**/*.example
 
 # IDE files
 .vscode
@@ -28,11 +59,6 @@ Thumbs.db
 # Git
 .git
 .gitignore
-
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
 
 # Documentation
 README.md
@@ -52,20 +78,8 @@ pids
 # Coverage directory used by tools like istanbul
 coverage
 
-# Dependency directories
-jspm_packages/
-
 # Optional npm cache directory
 .npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
 
 # Backend specific
 backend/__pycache__

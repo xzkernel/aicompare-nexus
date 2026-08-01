@@ -77,8 +77,30 @@ coverage.xml
 
 # Environment variables
 .env
+.env.*
+env.env
+*.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Credentials and private key material
+*secret*
+*secrets*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+keys/
+certs/
+secrets/
+**/keys/**
+**/certs/**
+**/secrets/**
+**/id_rsa*
+**/id_ed25519*
 

@@ -7,17 +7,17 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import time
 import weakref
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Set, Tuple
 
-import httpx
-
 from registry.catalog import FRONTIER_CATALOG, PROVIDER_META
 from registry.legacy import is_legacy_model_id
 from providers.opencode import OPENCODE_ROOTS, is_supported_live_model
+from security import outbound_client, read_limited_response
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,9 @@ OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_HYDRATE_LIMIT = 200
 OPENCODE_HYDRATE_LIMIT = 200
 REGISTRY_CACHE_TTL_SEC = 45
+MAX_REGISTRY_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_REGISTRY_MODEL_ID = 256
+MAX_REGISTRY_MODEL_NAME = 256
 
 # Prefer recent frontier slugs when merging OpenRouter
 _FRONTIER_HINTS = (
@@ -69,6 +72,14 @@ def _is_free_model(provider: str, model_id: str) -> bool:
         or normalized.endswith(":free")
         or (provider == "opencode-zen" and normalized == "big-pickle")
     )
+
+
+def _context_window(value: Any) -> str:
+    if isinstance(value, int) and 0 < value <= 100_000_000:
+        return str(value)
+    if isinstance(value, str) and 0 < len(value) <= 32:
+        return value
+    return "—"
 
 
 def _openrouter_relevance(or_id: str, name: str) -> int:
@@ -198,13 +209,25 @@ def _fingerprint(models: List[Dict[str, Any]]) -> str:
     return digest[:16]
 
 
+async def _fetch_registry_json(url: str) -> Any:
+    """Fetch registry JSON without proxies and without buffering an unbounded body."""
+    async with outbound_client(15) as client:
+        if hasattr(client, "stream"):
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                raw = await read_limited_response(response, MAX_REGISTRY_RESPONSE_BYTES)
+            return json.loads(raw)
+
+        # Production HTTPX clients always stream; this supports minimal test doubles.
+        response = await client.get(url)
+        response.raise_for_status()
+        return response.json()
+
+
 async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
     extra: List[Dict[str, Any]] = []
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(OPENROUTER_MODELS_URL)
-            response.raise_for_status()
-            data = response.json()
+        data = await _fetch_registry_json(OPENROUTER_MODELS_URL)
     except Exception:
         logger.warning("OpenRouter model hydration failed")
         return extra
@@ -220,14 +243,22 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
         if not m["provider"].startswith("opencode-") and m.get("openRouterId")
     }
 
-    candidates = [
-        item
-        for item in data.get("data", [])
-        if item.get("id")
-        and item["id"] not in catalog_ids
-        and item["id"] not in catalog_or
-        and not is_legacy_model_id(str(item["id"]))
-    ]
+    raw_items = data.get("data", []) if isinstance(data, dict) else []
+    if not isinstance(raw_items, list):
+        return []
+    candidates = []
+    for item in raw_items[: OPENROUTER_HYDRATE_LIMIT * 10]:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id")
+        if not isinstance(model_id, str) or not model_id.strip() or len(model_id) > MAX_REGISTRY_MODEL_ID:
+            continue
+        if model_id in catalog_ids or model_id in catalog_or or is_legacy_model_id(model_id):
+            continue
+        name = item.get("name")
+        if name is not None and (not isinstance(name, str) or len(name) > MAX_REGISTRY_MODEL_NAME):
+            item = dict(item, name=model_id)
+        candidates.append(item)
     candidates.sort(
         key=lambda item: _openrouter_relevance(
             str(item.get("id", "")),
@@ -249,7 +280,7 @@ async def _fetch_openrouter_models() -> List[Dict[str, Any]]:
                 "name": name,
                 "provider": provider,
                 "supportsStreaming": True,
-                "contextWindow": str(item.get("context_length") or "—"),
+                "contextWindow": _context_window(item.get("context_length")),
                 "multimodal": False,
                 "reasoning": False,
                 "freeTier": _is_free_model(provider, or_id),
@@ -284,10 +315,7 @@ def _readable_model_name(model_id: str) -> str:
 
 async def _fetch_opencode_models(provider: str) -> List[Dict[str, Any]]:
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.get(f"{OPENCODE_ROOTS[provider]}/models")
-            response.raise_for_status()
-            payload = response.json()
+        payload = await _fetch_registry_json(f"{OPENCODE_ROOTS[provider]}/models")
     except Exception:
         logger.warning("%s model hydration failed", provider)
         return []
@@ -301,19 +329,25 @@ async def _fetch_opencode_models(provider: str) -> List[Dict[str, Any]]:
         if not isinstance(raw, (str, dict)):
             continue
         model_id = raw if isinstance(raw, str) else raw.get("id")
-        if not isinstance(model_id, str):
+        if (
+            not isinstance(model_id, str)
+            or not model_id.strip()
+            or len(model_id) > MAX_REGISTRY_MODEL_ID
+        ):
             continue
         if not is_supported_live_model(provider, model_id):
             omitted_ids.append(model_id)
             continue
         name = raw.get("name") if isinstance(raw, dict) else None
+        if name is not None and (not isinstance(name, str) or len(name) > MAX_REGISTRY_MODEL_NAME):
+            name = None
         hydrated.append(
             {
                 "id": model_id,
                 "name": name or _readable_model_name(model_id),
                 "provider": provider,
                 "supportsStreaming": True,
-                "contextWindow": str(raw.get("context_length") or "—") if isinstance(raw, dict) else "—",
+                "contextWindow": _context_window(raw.get("context_length")) if isinstance(raw, dict) else "—",
                 "multimodal": False,
                 "reasoning": False,
                 "freeTier": _is_free_model(provider, model_id),

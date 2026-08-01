@@ -24,20 +24,27 @@ const DEFAULTS: PreferencesRecord = {
   syncEnabled: false,
   locale: "en",
 };
+let memoryPreferences: PreferencesRecord = { ...DEFAULTS };
 
 export async function getPreferencesRecord(): Promise<PreferencesRecord> {
-  const db = await getLocalDb();
-  const row = await db.get("preferences", PREFERENCES_ID);
-  if (row) return row;
-  await db.put("preferences", DEFAULTS);
-  return DEFAULTS;
+  try {
+    const db = await getLocalDb();
+    const row = await db.get("preferences", PREFERENCES_ID);
+    if (row) {
+      memoryPreferences = row;
+      return row;
+    }
+    await db.put("preferences", memoryPreferences);
+  } catch {
+    // Private browsing and storage policies can make IndexedDB unavailable.
+  }
+  return memoryPreferences;
 }
 
 export async function patchPreferencesRecord(
   patch: Partial<Omit<PreferencesRecord, "id">>,
-  options?: { skipSync?: boolean }
+  _options?: { skipSync?: boolean }
 ): Promise<PreferencesRecord> {
-  const db = await getLocalDb();
   const current = await getPreferencesRecord();
   const next: PreferencesRecord = {
     ...current,
@@ -47,7 +54,13 @@ export async function patchPreferencesRecord(
     updatedAt: Date.now(),
     deviceId: getDeviceId(),
   };
-  await db.put("preferences", next);
+  memoryPreferences = next;
+  try {
+    const db = await getLocalDb();
+    await db.put("preferences", next);
+  } catch {
+    // Keep the preference for this tab when persistent storage is unavailable.
+  }
   notifyLocalDbChange();
   return next;
 }

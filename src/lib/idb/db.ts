@@ -7,7 +7,7 @@ import { getDeviceId } from "./device-id";
 import { ENTITY_SCHEMA_VERSION } from "@/types/sync";
 
 export const DB_NAME = "modelwise-local";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface ModelWiseDBSchema extends DBSchema {
   comparison_sessions: {
@@ -39,72 +39,96 @@ let dbPromise: Promise<IDBPDatabase<ModelWiseDBSchema>> | null = null;
 
 const LEGACY_SESSIONS_KEY = "modelwise-comparison-sessions";
 
-async function migrateLegacyLocalStorage(db: IDBPDatabase<ModelWiseDBSchema>) {
+export async function migrateLegacyLocalStorage(
+  db: IDBPDatabase<ModelWiseDBSchema>,
+  storage?: Pick<Storage, "getItem" | "removeItem">
+): Promise<boolean> {
   const meta = await db.get("metadata", "app");
-  if (meta?.legacyLocalStorageMigrated) return;
+  if (meta?.legacyLocalStorageMigrated) return true;
 
   try {
-    const raw = localStorage.getItem(LEGACY_SESSIONS_KEY);
+    const source = storage ?? localStorage;
+    const raw = source.getItem(LEGACY_SESSIONS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
-      if (Array.isArray(parsed)) {
-        const deviceId = getDeviceId();
-        const now = Date.now();
-        const tx = db.transaction("comparison_sessions", "readwrite");
-        for (const row of parsed) {
-          if (!row.id || !row.prompt) continue;
-          const record: ComparisonSessionRecord = {
-            id: String(row.id),
-            schemaVersion: ENTITY_SCHEMA_VERSION,
-            timestamp: Number(row.timestamp ?? now),
-            updatedAt: Number(row.timestamp ?? now),
-            deviceId,
-            deletedAt: null,
-            prompt: String(row.prompt),
-            leftModel: String(row.leftModel ?? ""),
-            rightModel: String(row.rightModel ?? ""),
-            leftResponse: row.leftResponse != null ? String(row.leftResponse) : undefined,
-            rightResponse: row.rightResponse != null ? String(row.rightResponse) : undefined,
-            leftTimeMs: row.leftTimeMs != null ? Number(row.leftTimeMs) : undefined,
-            rightTimeMs: row.rightTimeMs != null ? Number(row.rightTimeMs) : undefined,
-            leftTokens: row.leftTokens != null ? Number(row.leftTokens) : undefined,
-            rightTokens: row.rightTokens != null ? Number(row.rightTokens) : undefined,
-            pinned: Boolean(row.pinned),
-          };
-          await tx.store.put(record);
-        }
-        await tx.done;
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) throw new Error("Legacy sessions must be an array");
+      const deviceId = getDeviceId();
+      const now = Date.now();
+      const tx = db.transaction("comparison_sessions", "readwrite");
+      for (const value of parsed) {
+        if (!value || typeof value !== "object") continue;
+        const row = value as Record<string, unknown>;
+        if (!row.id || !row.prompt) continue;
+        const record: ComparisonSessionRecord = {
+          id: String(row.id),
+          schemaVersion: ENTITY_SCHEMA_VERSION,
+          timestamp: Number(row.timestamp ?? now),
+          updatedAt: Number(row.timestamp ?? now),
+          deviceId,
+          deletedAt: null,
+          prompt: String(row.prompt),
+          leftModel: String(row.leftModel ?? ""),
+          rightModel: String(row.rightModel ?? ""),
+          leftResponse: row.leftResponse != null ? String(row.leftResponse) : undefined,
+          rightResponse: row.rightResponse != null ? String(row.rightResponse) : undefined,
+          leftTimeMs: row.leftTimeMs != null ? Number(row.leftTimeMs) : undefined,
+          rightTimeMs: row.rightTimeMs != null ? Number(row.rightTimeMs) : undefined,
+          leftTokens: row.leftTokens != null ? Number(row.leftTokens) : undefined,
+          rightTokens: row.rightTokens != null ? Number(row.rightTokens) : undefined,
+          pinned: Boolean(row.pinned),
+        };
+        await tx.store.put(record);
       }
-      localStorage.removeItem(LEGACY_SESSIONS_KEY);
+      await tx.done;
+      source.removeItem(LEGACY_SESSIONS_KEY);
     }
+    await db.put("metadata", {
+      id: "app",
+      schemaVersion: ENTITY_SCHEMA_VERSION,
+      legacyLocalStorageMigrated: true,
+      lastPullAt: meta?.lastPullAt ?? null,
+      lastPushAt: meta?.lastPushAt ?? null,
+      deviceId: getDeviceId(),
+    });
+    return true;
   } catch {
-    // keep legacy data if migration fails
+    return false;
   }
+}
 
-  await db.put("metadata", {
-    id: "app",
-    schemaVersion: ENTITY_SCHEMA_VERSION,
-    legacyLocalStorageMigrated: true,
-    lastPullAt: meta?.lastPullAt ?? null,
-    lastPushAt: meta?.lastPushAt ?? null,
-    deviceId: getDeviceId(),
-  });
+async function purgeLocalOnlyTombstones(db: IDBPDatabase<ModelWiseDBSchema>): Promise<void> {
+  const tx = db.transaction(["comparison_sessions", "saved_prompts"], "readwrite");
+  const sessions = await tx.objectStore("comparison_sessions").getAll();
+  const prompts = await tx.objectStore("saved_prompts").getAll();
+  await Promise.all([
+    ...sessions.filter((row) => row.deletedAt != null).map((row) => tx.objectStore("comparison_sessions").delete(row.id)),
+    ...prompts.filter((row) => row.deletedAt != null).map((row) => tx.objectStore("saved_prompts").delete(row.id)),
+  ]);
+  await tx.done;
 }
 
 export function getLocalDb(): Promise<IDBPDatabase<ModelWiseDBSchema>> {
   if (!dbPromise) {
     dbPromise = openDB<ModelWiseDBSchema>(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        const sessions = db.createObjectStore("comparison_sessions", { keyPath: "id" });
-        sessions.createIndex("by-updated", "updatedAt");
-
-        const prompts = db.createObjectStore("saved_prompts", { keyPath: "id" });
-        prompts.createIndex("by-updated", "updatedAt");
-
-        db.createObjectStore("preferences", { keyPath: "id" });
-        const queue = db.createObjectStore("sync_queue", { keyPath: "id" });
-        queue.createIndex("by-created", "createdAt");
-        db.createObjectStore("metadata", { keyPath: "id" });
+        if (!db.objectStoreNames.contains("comparison_sessions")) {
+          const sessions = db.createObjectStore("comparison_sessions", { keyPath: "id" });
+          sessions.createIndex("by-updated", "updatedAt");
+        }
+        if (!db.objectStoreNames.contains("saved_prompts")) {
+          const prompts = db.createObjectStore("saved_prompts", { keyPath: "id" });
+          prompts.createIndex("by-updated", "updatedAt");
+        }
+        if (!db.objectStoreNames.contains("preferences")) {
+          db.createObjectStore("preferences", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("sync_queue")) {
+          const queue = db.createObjectStore("sync_queue", { keyPath: "id" });
+          queue.createIndex("by-created", "createdAt");
+        }
+        if (!db.objectStoreNames.contains("metadata")) {
+          db.createObjectStore("metadata", { keyPath: "id" });
+        }
       },
     }).then(async (db) => {
       const meta = await db.get("metadata", "app");
@@ -119,7 +143,11 @@ export function getLocalDb(): Promise<IDBPDatabase<ModelWiseDBSchema>> {
         });
       }
       await migrateLegacyLocalStorage(db);
+      await purgeLocalOnlyTombstones(db);
       return db;
+    }).catch((error) => {
+      dbPromise = null;
+      throw error;
     });
   }
   return dbPromise;
@@ -136,7 +164,7 @@ export async function getAppMetadata(): Promise<LocalMetadata> {
   const fresh: LocalMetadata = {
     id: "app",
     schemaVersion: ENTITY_SCHEMA_VERSION,
-    legacyLocalStorageMigrated: true,
+    legacyLocalStorageMigrated: false,
     lastPullAt: null,
     lastPushAt: null,
     deviceId: getDeviceId(),
@@ -154,10 +182,13 @@ export async function patchAppMetadata(patch: Partial<LocalMetadata>): Promise<v
 const CHANGE_EVENT = "modelwise-local-db-changed";
 
 export function notifyLocalDbChange() {
-  window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+  }
 }
 
 export function subscribeLocalDb(handler: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
   const listener = () => handler();
   window.addEventListener(CHANGE_EVENT, listener);
   return () => window.removeEventListener(CHANGE_EVENT, listener);

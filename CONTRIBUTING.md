@@ -1,11 +1,11 @@
 # Contributing to ModelWise
 
-Thank you for helping improve ModelWise. This is a **focused OSS evaluation tool** — not an agent platform, SaaS product, or workflow engine.
+Thank you for helping improve ModelWise. The project focuses on model comparison, registry, and provider routing rather than account, billing, or agent-orchestration features.
 
 ## Philosophy
 
 - **Minimal diffs** — solve the problem, don't refactor adjacent code
-- **BYOK-first** — never store or log API keys
+- **BYOK-first** — do not persist or log plaintext API keys
 - **Backend is canonical** for model lists (`GET /api/v1/models`)
 - **No feature creep** — streaming compare, registry, and provider routing are the core
 
@@ -13,26 +13,33 @@ Thank you for helping improve ModelWise. This is a **focused OSS evaluation tool
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-**Canonical backend:** `backend/`  
-**Deprecated:** `app/` (legacy — do not extend)
+The frontend is in `src/`; the FastAPI backend is in `backend/`.
 
 ## Local setup
 
+Prerequisites are Node.js 22.13+ and Python 3.11.
+
 ```bash
-git clone <repo>
-cd modelwise
-npm install
-
+git clone https://github.com/xzkernel/aicompare-nexus.git
+cd aicompare-nexus
+npm ci
 cd backend
-pip install -r requirements.txt
-cp env.env.example env.env   # optional
-python -m uvicorn main:app --reload --port 8001
+python -m pip install --require-hashes -r requirements-dev.lock
+```
 
-# separate terminal
+Run the backend from `backend/`:
+
+```bash
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
+```
+
+In a separate terminal, run the frontend from the repository root:
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:8080
+Open `http://localhost:8080`. Copy `backend/env.env.example` to `backend/env.env` only when you need backend configuration overrides; never commit that file.
 
 ## Coding guidelines
 
@@ -51,11 +58,11 @@ Open http://localhost:8080
 
 ### Provider adapter extension
 
-1. Add `backend/providers/your_provider.py` implementing stream + ask
-2. Wire in `providers/factory.py`
-3. Update `utils/model_resolver.py` if inference rules needed
-4. Add `PROVIDER_CONFIG` entry in `src/config/providers.ts`
-5. Document headers in `docs/PROVIDERS.md`
+1. Add `backend/providers/your_provider.py` implementing stream and non-stream requests.
+2. Wire it into `backend/providers/factory.py`.
+3. Update `backend/utils/model_resolver.py` if routing rules are needed.
+4. Add its configuration to `src/config/providers.ts`.
+5. Document its headers in `docs/PROVIDERS.md`.
 
 ### Streaming guidelines
 
@@ -66,35 +73,48 @@ Open http://localhost:8080
 
 ### Registry changes
 
-1. Edit `backend/registry/catalog.py`
-2. Add relay mapping in `OPENROUTER_MODEL_MAP` if slug differs
-3. No frontend model list edits required (hydrates from API)
+1. Edit `backend/registry/catalog.py`.
+2. Add a relay mapping in `OPENROUTER_MODEL_MAP` if the provider slug differs.
+3. Do not add a duplicate frontend model list; the UI hydrates from the API.
 
 ## Pull requests
 
 - One concern per PR when possible
 - Update docs if you change API contracts or env vars
-- Verify `npm run build` passes
-- Verify backend starts: `python -m uvicorn main:app --port 8001`
+- Run the applicable checks listed below.
+- Verify the backend starts from `backend/`: `python -m uvicorn main:app --host 127.0.0.1 --port 8001`.
 - No committed secrets (`.env`, `env.env`)
 - Screenshots in `docs/screenshots/` if UI changes materially
 
 ## What we won't merge (for now)
 
 - Auth/billing/SaaS systems
-- Agent workflows or tool orchestration
+- Agent or tool-orchestration features
 - Cloud sync or team features
 - Hosted inference layers
 - Analytics/telemetry platforms
 
 ## Tests
 
+Frontend checks from the repository root:
+
 ```bash
+npm run lint
+npm run typecheck
+npm test
 npm run build
-npm run test          # Playwright (if configured)
-cd backend && python -m pytest  # when tests exist
+npm exec -- playwright test --config=scripts/playwright.config.mjs
 ```
+
+Backend tests from `backend/`:
+
+```bash
+python -m pip install --require-hashes -r requirements-dev.lock
+python -m pytest
+```
+
+The Playwright command starts the built frontend through the configured preview server, so run it after `npm run build`. Runtime dependencies remain declared in `backend/requirements.txt`; reproducible development installs use `backend/requirements-dev.lock`.
 
 ## Questions
 
-Open a GitHub issue with the `question` label or check existing docs in `docs/`.
+See [SUPPORT.md](./SUPPORT.md) before opening an issue.

@@ -1,8 +1,4 @@
-import logging
-
 from .meta import MetaRelayProvider
-
-logger = logging.getLogger(__name__)
 
 
 class CustomProvider(MetaRelayProvider):

@@ -21,17 +21,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    void getPreferencesRecord().then((prefs) => {
-      setThemeState(resolveTheme(prefs.theme));
-      setHydrated(true);
-    });
+    void getPreferencesRecord()
+      .then((prefs) => setThemeState(resolveTheme(prefs.theme)))
+      .finally(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
     return subscribeLocalDb(() => {
-      void getPreferencesRecord().then((prefs) => {
-        setThemeState(resolveTheme(prefs.theme));
-      });
+      void getPreferencesRecord().then((prefs) => setThemeState(resolveTheme(prefs.theme)));
     });
   }, []);
 

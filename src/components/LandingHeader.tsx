@@ -26,7 +26,7 @@ export function LandingHeader() {
             {t("nav.compare")}
           </a>
           <a
-            href="https://github.com/Archiixyz/aicompare-nexus#quick-start"
+            href="https://github.com/xzkernel/aicompare-nexus#quick-start"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full px-4 py-1 font-mono text-[10px] uppercase tracking-widest text-white/50 transition-all hover:bg-white/5 hover:text-white"
@@ -34,7 +34,7 @@ export function LandingHeader() {
             {t("nav.quickstart")}
           </a>
           <a
-            href="https://github.com/Archiixyz/aicompare-nexus"
+            href="https://github.com/xzkernel/aicompare-nexus"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full px-4 py-1 font-mono text-[10px] uppercase tracking-widest text-white/50 transition-all hover:bg-white/5 hover:text-white"

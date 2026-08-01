@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .citations import citation_from_url, dedupe_citations, hostname_from_url
+from .citations import dedupe_citations, hostname_from_url, valid_citation_url
 
 
 @dataclass
@@ -63,6 +63,7 @@ def merge_metadata(
         search_queries=list(dict.fromkeys(base.search_queries + incoming.search_queries)),
         search_mode=incoming.search_mode or base.search_mode,
         live_search=base.live_search or incoming.live_search,
+        used=base.used or incoming.used,
     )
 
 
@@ -73,7 +74,7 @@ def from_gemini_grounding(metadata: Dict[str, Any], provider: str = "google") ->
     for chunk in chunks:
         web = chunk.get("web") or {}
         uri = web.get("uri") or web.get("url") or ""
-        if not uri:
+        if not valid_citation_url(uri):
             continue
         citations.append(
             NormalizedCitation(
@@ -101,7 +102,7 @@ def from_anthropic_citations(
     normalized: List[NormalizedCitation] = []
     for c in citations:
         url = c.get("url") or ""
-        if not url:
+        if not valid_citation_url(url):
             continue
         normalized.append(
             NormalizedCitation(
@@ -131,7 +132,7 @@ def from_openrouter_annotations(
         if ann.get("type") == "url_citation":
             url_citation = ann.get("url_citation") or ann
             url = url_citation.get("url") or ""
-            if not url:
+            if not valid_citation_url(url):
                 continue
             citations.append(
                 NormalizedCitation(
@@ -142,7 +143,7 @@ def from_openrouter_annotations(
                     snippet=url_citation.get("content"),
                 )
             )
-        elif ann.get("url"):
+        elif valid_citation_url(ann.get("url")):
             citations.append(
                 NormalizedCitation(
                     title=ann.get("title") or hostname_from_url(ann["url"]),

@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import AsyncIterator, Optional
 
 import httpx
@@ -7,11 +6,8 @@ import httpx
 from schemas.search import ResolvedSearchOptions
 from security import iter_limited_response_lines, log_provider_error, outbound_client
 
-from .base import BaseProvider
+from .base import BaseProvider, MAX_PROVIDER_OUTPUT_CHARS
 from .stream_events import ProviderStreamEvent
-
-logger = logging.getLogger(__name__)
-
 
 class OpenAIProvider(BaseProvider):
     def __init__(self, key: str, model: str):
@@ -35,8 +31,12 @@ class OpenAIProvider(BaseProvider):
 
     async def complete(self, prompt: str, search: Optional[ResolvedSearchOptions] = None) -> str:
         parts = []
+        length = 0
         async for event in self.stream_events(prompt, search):
             if event.kind == "token":
+                length += len(event.text)
+                if length > MAX_PROVIDER_OUTPUT_CHARS:
+                    raise Exception("Provider output exceeded the size limit")
                 parts.append(event.text)
         return "".join(parts)
 
@@ -54,6 +54,8 @@ class OpenAIProvider(BaseProvider):
                 },
             )
         url = "https://api.openai.com/v1/chat/completions"
+        emitted_text = False
+        terminal = False
         try:
             async with outbound_client(120) as client:
                 async with client.stream(
@@ -68,25 +70,44 @@ class OpenAIProvider(BaseProvider):
                             continue
                         data = line[5:].strip()
                         if data == "[DONE]":
+                            terminal = True
                             break
                         try:
                             chunk = json.loads(data)
                         except json.JSONDecodeError:
                             continue
-                        delta = (
-                            chunk.get("choices", [{}])[0]
-                            .get("delta", {})
-                            .get("content")
-                        )
+                        if not isinstance(chunk, dict):
+                            continue
+                        if chunk.get("error") is not None:
+                            raise Exception("OpenAI stream failed")
+                        choices = chunk.get("choices") or []
+                        if not choices or not isinstance(choices[0], dict):
+                            continue
+                        choice = choices[0]
+                        finish_reason = str(choice.get("finish_reason") or "").lower()
+                        if finish_reason == "length":
+                            raise Exception("OpenAI output limit reached before completion")
+                        if finish_reason == "content_filter":
+                            raise Exception("OpenAI response was blocked by content filtering")
+                        if finish_reason:
+                            if finish_reason != "stop":
+                                raise Exception("OpenAI response did not complete successfully")
+                            terminal = True
+                        delta = (choice.get("delta") or {}).get("content")
                         if delta:
+                            emitted_text = True
                             yield ProviderStreamEvent(kind="token", text=delta)
+            if not emitted_text:
+                raise Exception("OpenAI returned no answer text")
+            if not terminal:
+                raise Exception("OpenAI stream terminated unexpectedly")
         except httpx.HTTPStatusError as e:
             raise _http_error("OpenAI", e)
         except httpx.TimeoutException:
             raise Exception("OpenAI API request timed out")
         except Exception as e:
             log_provider_error("OpenAI provider error", e)
-            raise Exception("OpenAI request failed") from None
+            raise e from None
 
 
 def _http_error(name: str, e: httpx.HTTPStatusError) -> Exception:

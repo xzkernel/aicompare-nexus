@@ -37,6 +37,21 @@
     "routesConfigured_other": "{{count}} مسار مهيأ",
     "keyPresent": "المفتاح موجود",
     "keysRequired": "المفاتيح مطلوبة",
+    "sectionsLabel": "أقسام الإعدادات",
+    "api": {
+      "routeConfigured": "تم إعداد مسار واحد على الأقل لطلبات ساحة التجربة.",
+      "noRoutes": "لم يتم إعداد أي مسار لمفتاح API. أضف بيانات الاعتماد لتفعيل التقييم.",
+      "googleOpenRouter": "يتم توجيه Gemini عبر OpenRouter باستخدام مفتاح الترحيل أدناه.",
+      "claudeOpenRouter": "يتم توجيه Claude عبر OpenRouter باستخدام مفتاح الترحيل أدناه.",
+      "openRouterRequired": "يلزم OpenRouter ما دام Gemini أو Claude يستخدم وضع التوجيه هذا."
+    },
+    "vault": {
+      "strongerPassword": "يلزم استخدام كلمة مرور أقوى",
+      "passwordMinimum": "استخدم {{count}} حرفاً على الأقل."
+    },
+    "storage": {
+      "autoSave": "تُحفظ المقارنات المكتملة تلقائياً في IndexedDB للمتصفح"
+    },
     "sections": {
       "providers": { "label": "المزوّدون", "description": "نظرة عامة على الإعداد" },
       "api-keys": { "label": "مفاتيح API", "description": "بيانات الاعتماد والتوجيه" },
@@ -45,9 +60,24 @@
       "security": { "label": "الأمان", "description": "الخصوصية والعزل" }
     }
   },
+  "sessions": {
+    "importSuccess": "اكتمل الاستيراد",
+    "importResult": "تم استيراد {{imported}} جلسة وتخطي {{skipped}} للحفاظ على السجل الحالي.",
+    "importFailed": "فشل الاستيراد",
+    "importFailedDescription": "تعذر استيراد النسخة الاحتياطية. تحقق من تنسيقها.",
+    "fileTooLarge": "يتجاوز ملف الاستيراد حد 5 ميغابايت.",
+    "noValidSessions": "لم يتم العثور على جلسات صالحة.",
+    "rowLimit": "يمكن أن يحتوي الاستيراد على {{count}} جلسة كحد أقصى."
+  },
+  "markdown": {
+    "codeCopied": "تم نسخ الرمز",
+    "copyFailed": "فشل النسخ",
+    "copyCode": "نسخ الرمز",
+    "remoteImageBlocked": "تم حظر الصورة البعيدة"
+  },
   "playground": {
     "promptWorkspace": "مساحة الموجّه",
-    "charTokens": "{{chars}}/4000 · ~{{tokens}} رمز",
+    "charTokens": "{{chars}}/{{max}} · ~{{tokens}} رمز",
     "clearPrompt": "مسح الموجّه",
     "cancel": "إلغاء",
     "runComparison": "تشغيل المقارنة",
@@ -87,6 +117,7 @@
     "blocking": {
       "inProgress": "المقارنة قيد التنفيذ",
       "enterPrompt": "أدخل موجّهاً للمقارنة",
+      "promptTooLong": "يجب ألا يتجاوز الموجّه 32000 حرف",
       "selectModelA": "اختر نموذجاً للجانب أ",
       "selectModelB": "اختر نموذجاً للجانب ب",
       "addKeys": "أضف مفاتيح API لنموذج واحد على الأقل في الإعدادات"
