@@ -1,0 +1,7 @@
+title = "ModelWise Gitleaks configuration"
+
+[[allowlists]]
+description = "Removed high-entropy test fixture from the release-hardening commit"
+stopwords = [
+  "relay-key-123456789012345",
+]

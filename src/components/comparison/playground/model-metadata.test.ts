@@ -8,7 +8,7 @@ const keys: ApiKeys = {
   googleKey: "direct-google-key",
   anthropicKey: "direct-anthropic-key",
   opencodeKey: "opencode-key",
-  metaRelayKey: "relay-key-123456789012345",
+  metaRelayKey: "aaaaaaaaaaaaaaaaaaaaa",
   customApiKey: "",
   googleProvider: "openrouter",
   claudeProvider: "openrouter",
