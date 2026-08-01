@@ -49,6 +49,7 @@ services:
         limits:
           memory: 256M
           cpus: '0.25'
+          pids: 100
 
 networks:
   default:
