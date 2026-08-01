@@ -13,6 +13,7 @@ import httpx
 
 
 from schemas.search import ResolvedSearchOptions
+from security import iter_limited_response_lines, log_provider_error, outbound_client
 
 from services.search.normalize import from_anthropic_citations, merge_metadata
 
@@ -140,7 +141,7 @@ class AnthropicProvider(BaseProvider):
 
         try:
 
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with outbound_client(120) as client:
 
                 async with client.stream(
 
@@ -156,7 +157,7 @@ class AnthropicProvider(BaseProvider):
 
                     response.raise_for_status()
 
-                    async for line in response.aiter_lines():
+                    async for line in iter_limited_response_lines(response):
 
                         if not line.startswith("data:"):
 
@@ -328,9 +329,9 @@ class AnthropicProvider(BaseProvider):
 
         except Exception as e:
 
-            logger.error("Anthropic stream error: %s", e)
+            log_provider_error("Anthropic stream error", e)
 
-            raise Exception(f"Anthropic stream failed: {e}") from e
+            raise Exception("Anthropic stream failed") from None
 
 
 

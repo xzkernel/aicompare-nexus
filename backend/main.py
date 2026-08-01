@@ -10,13 +10,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import ENABLE_API_DOCS, IS_PRODUCTION
-from routes import compare, stream, health, models
-from middleware import RateLimitMiddleware
-from security import SecurityMiddleware
-
 backend_env = os.path.join(os.path.dirname(__file__), "env.env")
 load_dotenv(backend_env)
+
+from config import ENABLE_API_DOCS, IS_PRODUCTION
+from routes import compare, stream, health, models
+from middleware import RateLimitMiddleware, RequestSizeLimitMiddleware
+from security import SecurityMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,6 +75,7 @@ def create_app() -> FastAPI:
         ],
     )
     app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestSizeLimitMiddleware)
     app.add_middleware(SecurityMiddleware, allowed_origins=parsed_origins)
 
     app.include_router(health.router)

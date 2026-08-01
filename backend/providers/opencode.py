@@ -4,6 +4,7 @@ from typing import AsyncIterator, Optional
 import httpx
 
 from schemas.search import ResolvedSearchOptions
+from security import iter_limited_response_lines, log_provider_error, outbound_client
 
 from .base import BaseProvider
 from .stream_events import ProviderStreamEvent
@@ -329,7 +330,7 @@ class OpenCodeProvider(BaseProvider):
 
         try:
             emitted_text = False
-            async with httpx.AsyncClient(timeout=180, transport=self.transport) as client:
+            async with outbound_client(180, transport=self.transport) as client:
                 async with client.stream(
                     "POST",
                     self._url(),
@@ -339,7 +340,7 @@ class OpenCodeProvider(BaseProvider):
                     if response.status_code >= 400:
                         raise self._status_error(response.status_code)
 
-                    async for line in response.aiter_lines():
+                    async for line in iter_limited_response_lines(response):
                         if not line or not line.startswith("data:"):
                             continue
                         raw = line[5:].strip()
@@ -361,3 +362,6 @@ class OpenCodeProvider(BaseProvider):
             raise Exception("OpenCode request timed out") from None
         except httpx.RequestError:
             raise Exception("OpenCode network request failed") from None
+        except Exception as e:
+            log_provider_error("OpenCode provider error", e)
+            raise e from None

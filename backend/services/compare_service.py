@@ -14,7 +14,7 @@ from schemas.compare import AskRequest, AskResponse, CompareRequest, CompareResp
 
 from schemas.search import ResolvedSearchOptions
 
-from security import classify_provider_error
+from security import classify_provider_error, redact_sensitive_data
 
 from utils.byok import ByokHeaders
 
@@ -56,7 +56,7 @@ async def _run_provider(
 
     except Exception as e:
 
-        logger.error("Provider %s failed: %s", name, e)
+        logger.error("Provider %s failed: %s", name, redact_sensitive_data(str(e)))
 
         return classify_provider_error(e), round(time.time() - start, 3)
 
@@ -143,7 +143,7 @@ async def _run_spec(spec: ProviderSpec, prompt: str, keys: ByokHeaders) -> Tuple
 
     except Exception as e:
 
-        logger.error("Provider %s failed: %s", spec.label, e)
+        logger.error("Provider %s failed: %s", spec.label, redact_sensitive_data(str(e)))
 
         return spec.label, {
 

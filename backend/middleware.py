@@ -12,6 +12,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
 
 from utils.client_ip import get_client_ip
+from security import redact_sensitive_data
 
 # Configure logging for middleware
 logger = logging.getLogger(__name__)
@@ -19,6 +20,67 @@ logger = logging.getLogger(__name__)
 # Health paths and methods that should never be rate limited
 EXCLUDED_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
 EXCLUDED_METHODS = {"HEAD", "OPTIONS"}
+MAX_REQUEST_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(512 * 1024)))
+
+
+class RequestSizeLimitMiddleware:
+    """Bound request bodies before FastAPI buffers JSON, including chunked uploads."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope.get("method") in EXCLUDED_METHODS:
+            await self.app(scope, receive, send)
+            return
+
+        raw_length = dict(scope.get("headers", [])).get(b"content-length")
+        if raw_length:
+            try:
+                if int(raw_length) > MAX_REQUEST_BODY_BYTES:
+                    await JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body is too large"},
+                    )(scope, receive, send)
+                    return
+            except ValueError:
+                await JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length header"},
+                )(scope, receive, send)
+                return
+
+        chunks: list[bytes] = []
+        total = 0
+        more_body = True
+        while more_body:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            if message["type"] != "http.request":
+                continue
+            body = message.get("body", b"")
+            total += len(body)
+            if total > MAX_REQUEST_BODY_BYTES:
+                await JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request body is too large"},
+                )(scope, receive, send)
+                return
+            chunks.append(body)
+            more_body = message.get("more_body", False)
+
+        body = b"".join(chunks)
+        delivered = False
+
+        async def replay_receive():
+            nonlocal delivered
+            if delivered:
+                return await receive()
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay_receive, send)
 
 class RateLimiter:
     def __init__(self, requests_per_minute: int = 60, requests_per_hour: int = 1000):
@@ -146,13 +208,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Never crash the stack from within middleware
             # Log the error and allow request to proceed rather than 500-ing
-            logger.error(f"Rate limit middleware error: {e}")
+            logger.error("Rate limit middleware error: %s", redact_sensitive_data(str(e)))
             
             # Fallback: allow request to proceed
             try:
                 return await call_next(request)
             except Exception as fallback_error:
-                logger.error(f"Fallback call_next also failed: {fallback_error}")
+                logger.error("Fallback call_next also failed: %s", redact_sensitive_data(str(fallback_error)))
                 # Last resort: return a generic error response
                 return JSONResponse(
                     status_code=500,
@@ -205,13 +267,13 @@ async def rate_limit_middleware(request: Request, call_next):
     except Exception as e:
         # Never crash the stack from within middleware
         # Log the error and allow request to proceed rather than 500-ing
-        logger.error(f"Rate limit middleware error: {e}")
+        logger.error("Rate limit middleware error: %s", redact_sensitive_data(str(e)))
         
         # Fallback: allow request to proceed
         try:
             return await call_next(request)
         except Exception as fallback_error:
-            logger.error(f"Fallback call_next also failed: {fallback_error}")
+            logger.error("Fallback call_next also failed: %s", redact_sensitive_data(str(fallback_error)))
             # Last resort: return a generic error response
             return JSONResponse(
                 status_code=500,

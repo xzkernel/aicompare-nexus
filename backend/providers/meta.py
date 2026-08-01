@@ -7,6 +7,14 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 import httpx
 
 from schemas.search import ResolvedSearchOptions
+from security import (
+    iter_limited_response_lines,
+    log_provider_error,
+    normalize_outbound_key_header,
+    outbound_client,
+    read_limited_response,
+    validate_outbound_url,
+)
 from services.search.normalize import from_openrouter_annotations, merge_metadata
 
 from .base import BaseProvider
@@ -24,8 +32,8 @@ class MetaRelayProvider(BaseProvider):
     def __init__(self, key: str, model: str, base_url: str, key_header: str = "Authorization"):
         self.key = key
         self.model = model
-        self.base_url = base_url.rstrip("/")
-        self.key_header = key_header
+        self.base_url = validate_outbound_url(base_url)
+        self.key_header = normalize_outbound_key_header(key_header)
 
     def _headers(self) -> dict:
         value = self.key if self.key.startswith("Bearer ") else f"Bearer {self.key}"
@@ -37,8 +45,10 @@ class MetaRelayProvider(BaseProvider):
 
     def _url(self) -> str:
         if self.base_url.endswith("/v1"):
-            return f"{self.base_url}/chat/completions"
-        return f"{self.base_url}/v1/chat/completions"
+            url = f"{self.base_url}/chat/completions"
+        else:
+            url = f"{self.base_url}/v1/chat/completions"
+        return validate_outbound_url(url)
 
     def _payload(
         self,
@@ -119,7 +129,7 @@ class MetaRelayProvider(BaseProvider):
         queries_seen: set[str] = set()
 
         try:
-            async with httpx.AsyncClient(timeout=180) as client:
+            async with outbound_client(180) as client:
                 async with client.stream(
                     "POST",
                     self._url(),
@@ -127,11 +137,15 @@ class MetaRelayProvider(BaseProvider):
                     json=self._payload(prompt, stream=True, search=search),
                 ) as response:
                     if response.status_code >= 400:
-                        body = await response.aread()
-                        logger.error("OpenRouter error %s: %s", response.status_code, body[:500])
+                        body = await read_limited_response(response)
+                        log_provider_error(
+                            f"Relay upstream error {response.status_code}",
+                            Exception("upstream returned an error"),
+                            body,
+                        )
                     response.raise_for_status()
 
-                    async for line in response.aiter_lines():
+                    async for line in iter_limited_response_lines(response):
                         if not line or not line.startswith("data:"):
                             continue
                         raw = line[5:].strip()
@@ -189,5 +203,5 @@ class MetaRelayProvider(BaseProvider):
         except httpx.TimeoutException:
             raise Exception("Relay API request timed out")
         except Exception as e:
-            logger.error("Meta relay error: %s", e)
-            raise Exception(f"Relay request failed: {e}") from e
+            log_provider_error("Meta relay error", e)
+            raise Exception("Relay request failed") from None

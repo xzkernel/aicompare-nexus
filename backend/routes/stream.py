@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 
 from schemas.stream import StreamRequest
 from services.stream_service import stream_comparison_sse
+from security import redact_sensitive_data
 from utils.byok import parse_byok_headers
 from utils.model_resolver import resolve_side
 
@@ -35,18 +36,21 @@ async def stream_compare(
     if not body.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt is required")
 
-    keys = parse_byok_headers(
-        x_openai_api_key=x_openai_api_key,
-        x_google_api_key=x_google_api_key,
-        x_anthropic_api_key=x_anthropic_api_key,
-        x_opencode_api_key=x_opencode_api_key,
-        x_meta_api_key=x_meta_api_key,
-        x_custom_api_key=x_custom_api_key,
-        x_meta_base_url=x_meta_base_url,
-        x_meta_key_header=x_meta_key_header,
-        x_custom_base_url=x_custom_base_url,
-        x_custom_key_header=x_custom_key_header,
-    )
+    try:
+        keys = parse_byok_headers(
+            x_openai_api_key=x_openai_api_key,
+            x_google_api_key=x_google_api_key,
+            x_anthropic_api_key=x_anthropic_api_key,
+            x_opencode_api_key=x_opencode_api_key,
+            x_meta_api_key=x_meta_api_key,
+            x_custom_api_key=x_custom_api_key,
+            x_meta_base_url=x_meta_base_url,
+            x_meta_key_header=x_meta_key_header,
+            x_custom_base_url=x_custom_base_url,
+            x_custom_key_header=x_custom_key_header,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
@@ -69,6 +73,6 @@ async def stream_compare(
         msg = str(e)
         raise HTTPException(status_code=400, detail=msg) from e
     except Exception as e:
-        logger.exception("stream failed: %s", e)
+        logger.error("stream failed: %s", redact_sensitive_data(str(e)))
         # Never expose internal exception details to client
         raise HTTPException(status_code=500, detail="Stream failed") from e

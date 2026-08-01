@@ -5,6 +5,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from schemas.compare import AskRequest, AskResponse, CompareRequest, CompareResponse
 from services.compare_service import run_ask_comparison, run_multi_compare
+from security import redact_sensitive_data
 from utils.byok import parse_byok_headers
 
 logger = logging.getLogger(__name__)
@@ -56,18 +57,21 @@ async def ask(
     if not body.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt is required")
 
-    keys = _byok_from_headers(
-        x_openai_api_key,
-        x_google_api_key,
-        x_anthropic_api_key,
-        x_opencode_api_key,
-        x_meta_api_key,
-        x_custom_api_key,
-        x_meta_base_url,
-        x_meta_key_header,
-        x_custom_base_url,
-        x_custom_key_header,
-    )
+    try:
+        keys = _byok_from_headers(
+            x_openai_api_key,
+            x_google_api_key,
+            x_anthropic_api_key,
+            x_opencode_api_key,
+            x_meta_api_key,
+            x_custom_api_key,
+            x_meta_base_url,
+            x_meta_key_header,
+            x_custom_base_url,
+            x_custom_key_header,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
@@ -77,7 +81,7 @@ async def ask(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.exception("ask failed: %s", e)
+        logger.error("ask failed: %s", redact_sensitive_data(str(e)))
         raise HTTPException(status_code=500, detail="Comparison failed") from e
 
 
@@ -99,18 +103,21 @@ async def compare(
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt is required")
 
-    keys = _byok_from_headers(
-        x_openai_api_key,
-        x_google_api_key,
-        x_anthropic_api_key,
-        x_opencode_api_key,
-        x_meta_api_key,
-        x_custom_api_key,
-        x_meta_base_url,
-        x_meta_key_header,
-        x_custom_base_url,
-        x_custom_key_header,
-    )
+    try:
+        keys = _byok_from_headers(
+            x_openai_api_key,
+            x_google_api_key,
+            x_anthropic_api_key,
+            x_opencode_api_key,
+            x_meta_api_key,
+            x_custom_api_key,
+            x_meta_base_url,
+            x_meta_key_header,
+            x_custom_base_url,
+            x_custom_key_header,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     if not any([keys.openai, keys.google, keys.anthropic, keys.opencode, keys.meta, keys.custom]):
         raise HTTPException(status_code=401, detail="At least one provider API key is required")
@@ -120,5 +127,5 @@ async def compare(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.exception("compare failed: %s", e)
+        logger.error("compare failed: %s", redact_sensitive_data(str(e)))
         raise HTTPException(status_code=500, detail="Comparison failed") from e

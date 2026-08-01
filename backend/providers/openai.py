@@ -5,6 +5,7 @@ from typing import AsyncIterator, Optional
 import httpx
 
 from schemas.search import ResolvedSearchOptions
+from security import iter_limited_response_lines, log_provider_error, outbound_client
 
 from .base import BaseProvider
 from .stream_events import ProviderStreamEvent
@@ -54,7 +55,7 @@ class OpenAIProvider(BaseProvider):
             )
         url = "https://api.openai.com/v1/chat/completions"
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with outbound_client(120) as client:
                 async with client.stream(
                     "POST",
                     url,
@@ -62,7 +63,7 @@ class OpenAIProvider(BaseProvider):
                     json=self._payload(prompt, stream=True),
                 ) as response:
                     response.raise_for_status()
-                    async for line in response.aiter_lines():
+                    async for line in iter_limited_response_lines(response):
                         if not line or not line.startswith("data:"):
                             continue
                         data = line[5:].strip()
@@ -84,8 +85,8 @@ class OpenAIProvider(BaseProvider):
         except httpx.TimeoutException:
             raise Exception("OpenAI API request timed out")
         except Exception as e:
-            logger.error("OpenAI provider error: %s", e)
-            raise Exception(f"OpenAI request failed: {e}") from e
+            log_provider_error("OpenAI provider error", e)
+            raise Exception("OpenAI request failed") from None
 
 
 def _http_error(name: str, e: httpx.HTTPStatusError) -> Exception:

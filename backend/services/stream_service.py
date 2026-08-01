@@ -27,7 +27,7 @@ from services.search.normalize import NormalizedSearchMetadata, merge_metadata, 
 from utils.byok import ByokHeaders
 
 from utils.model_resolver import resolve_side
-from security import classify_provider_error
+from security import classify_provider_error, redact_sensitive_data
 
 
 
@@ -364,7 +364,7 @@ async def _stream_side(
 
     except Exception as e:
 
-        logger.error("Stream %s failed: %s", side, e)
+        logger.error("Stream %s failed: %s", side, redact_sensitive_data(str(e)))
 
         client_msg = classify_provider_error(e)
 
@@ -410,7 +410,9 @@ async def stream_comparison_sse(body: StreamRequest, keys: ByokHeaders) -> Async
 
 
 
-    queue: asyncio.Queue[str | None] = asyncio.Queue()
+    # Backpressure prevents a fast provider from buffering unbounded SSE output
+    # while a client connection is slow or abandoned.
+    queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=256)
 
 
 

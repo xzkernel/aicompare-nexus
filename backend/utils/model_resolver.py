@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
 from utils.byok import ByokHeaders
-from security import validate_relay_base_url
+from security import normalize_outbound_key_header, validate_relay_base_url
 
 OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api"
 
@@ -89,7 +89,7 @@ def resolve_side(
         if keys.meta:
             relay_base = validate_relay_base_url(keys.meta_base_url or OPENROUTER_DEFAULT_BASE)
             extras["base_url"] = relay_base
-            extras["key_header"] = keys.meta_key_header
+            extras["key_header"] = normalize_outbound_key_header(keys.meta_key_header)
             return "meta", keys.meta, map_relay_model(model_id), extras
         raise ValueError(f"No Google or relay API key for model '{model_id}'")
 
@@ -99,7 +99,7 @@ def resolve_side(
         if keys.meta:
             relay_base = validate_relay_base_url(keys.meta_base_url or OPENROUTER_DEFAULT_BASE)
             extras["base_url"] = relay_base
-            extras["key_header"] = keys.meta_key_header
+            extras["key_header"] = normalize_outbound_key_header(keys.meta_key_header)
             return "meta", keys.meta, map_relay_model(model_id), extras
         raise ValueError(f"No Anthropic or relay API key for model '{model_id}'")
 
@@ -108,7 +108,7 @@ def resolve_side(
             raise ValueError(f"No OpenRouter relay API key for model '{model_id}'")
         relay_base = validate_relay_base_url(keys.meta_base_url or OPENROUTER_DEFAULT_BASE)
         extras["base_url"] = relay_base
-        extras["key_header"] = keys.meta_key_header
+        extras["key_header"] = normalize_outbound_key_header(keys.meta_key_header)
         return "meta", keys.meta, map_relay_model(model_id), extras
 
     if provider == "custom":
@@ -117,13 +117,13 @@ def resolve_side(
         # SSRF prevention — validate before the backend ever fetches this URL
         custom_base = validate_relay_base_url(keys.custom_base_url)
         extras["base_url"] = custom_base
-        extras["key_header"] = keys.custom_key_header
+        extras["key_header"] = normalize_outbound_key_header(keys.custom_key_header)
         return "custom", keys.custom, model_id, extras
 
     if keys.meta:
         relay_base = validate_relay_base_url(keys.meta_base_url or OPENROUTER_DEFAULT_BASE)
         extras["base_url"] = relay_base
-        extras["key_header"] = keys.meta_key_header
+        extras["key_header"] = normalize_outbound_key_header(keys.meta_key_header)
         return "meta", keys.meta, map_relay_model(model_id), extras
 
     inferred = infer_provider_from_model(model_id)

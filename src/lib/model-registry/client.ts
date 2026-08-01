@@ -1,6 +1,10 @@
 import type { ModelRegistryResponse, NormalizedRegistry } from "@/types/registry";
 import { apiUrl } from "@/lib/api-url";
-import { BUNDLED_FRONTIER_RESPONSE, isLegacyApiRegistry } from "./bundled-catalog";
+import {
+  BUNDLED_FRONTIER_RESPONSE,
+  BUNDLED_OPENCODE_PROVIDERS,
+  isLegacyApiRegistry,
+} from "./bundled-catalog";
 import { normalizeRegistryResponse } from "./normalize";
 
 const API_PATH = "/api/v1/models";
@@ -33,6 +37,46 @@ function bundledRegistry(source: NormalizedRegistry["syncSource"] = "offline"): 
   };
 }
 
+function mergeOpenCodeFallback(data: ModelRegistryResponse): ModelRegistryResponse {
+  const providers = data.providers ?? [];
+  const seenProviderIds = new Set<string>();
+  let addedFallback = false;
+  const needsFallback = (providerId: string): boolean => {
+    if (data.degraded) return true;
+    if (providerId === "opencode-go") return data.openCodeGoHydrated === false;
+    if (providerId === "opencode-zen") return data.openCodeZenHydrated === false;
+    return false;
+  };
+
+  const mergedProviders = providers.map((provider) => {
+    seenProviderIds.add(provider.id);
+    if (!needsFallback(provider.id)) return provider;
+    const fallback = BUNDLED_OPENCODE_PROVIDERS.find((candidate) => candidate.id === provider.id);
+    if (!fallback) return provider;
+
+    const models = provider.models ?? [];
+    const seenModelIds = new Set(models.map((model) => model.id));
+    const missingModels = fallback.models.filter((model) => !seenModelIds.has(model.id));
+    if (!missingModels.length) return provider;
+
+    addedFallback = true;
+    return { ...provider, models: [...models, ...missingModels] };
+  });
+
+  for (const fallback of BUNDLED_OPENCODE_PROVIDERS) {
+    if (seenProviderIds.has(fallback.id) || !needsFallback(fallback.id)) continue;
+    addedFallback = true;
+    mergedProviders.push({ ...fallback, models: [...fallback.models] });
+  }
+
+  if (!addedFallback) return data;
+  return {
+    ...data,
+    providers: mergedProviders,
+    fingerprint: `${data.fingerprint ?? "unknown"}:opencode-fallback`,
+  };
+}
+
 export function getCachedRegistry(): NormalizedRegistry | null {
   if (cached && Date.now() - cachedAt < REGISTRY_CACHE_TTL_MS) return cached;
   return null;
@@ -61,7 +105,7 @@ async function fetchRegistryFromNetwork(): Promise<NormalizedRegistry> {
   }
 
   return {
-    ...normalizeRegistryResponse(data),
+    ...normalizeRegistryResponse(mergeOpenCodeFallback(data)),
     syncSource: "live",
   };
 }
